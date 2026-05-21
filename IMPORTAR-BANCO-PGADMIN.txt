@@ -1,0 +1,38 @@
+IMPORTAR BANCO PELO pgAdmin (sem psql na linha de comando)
+=========================================================
+
+Use este guia se o IMPORTAR-BANCO.bat der erro de "psql nao encontrado"
+OU se preferir interface grafica.
+
+1) Instale o PostgreSQL
+   - Execute INSTALAR-POSTGRESQL.bat (abre o site de download)
+   - Na instalacao, anote a SENHA do usuario "postgres"
+
+2) Abra o pgAdmin 4
+   - Menu Iniciar do Windows -> procure "pgAdmin 4"
+
+3) Conecte no servidor
+   - Clique em "Servers" -> "PostgreSQL ..."
+   - Digite a senha do postgres
+
+4) Crie o banco de dados
+   - Botao direito em "Databases" -> Create -> Database
+   - Name: amazon_polpas
+   - Save
+
+5) Importe o arquivo SQL
+   - Clique com botao direito em "amazon_polpas"
+   - Query Tool
+   - Menu File -> Open
+   - Abra o arquivo:
+     files\amazon_polpas_banco.sql
+     (dentro da pasta App Compra de Fruto)
+   - Clique no botao Play (Executar) ou pressione F5
+   - Aguarde terminar sem erro vermelho
+
+6) Pronto!
+   - Execute INICIAR-SISTEMA.bat
+
+Login de teste:
+  joao@amazonpolpas.com.br
+  Admin@2025

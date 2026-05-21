@@ -1,0 +1,40 @@
+AMAZON POLPAS — Como usar no Windows
+=====================================
+
+ORDEM NA PRIMEIRA VEZ:
+  1. Instale Node.js (https://nodejs.org) — versao LTS
+  2. Duplo clique: CONFIGURAR-PRIMEIRA-VEZ.bat
+  3. Instale PostgreSQL: INSTALAR-POSTGRESQL.bat
+  4. Duplo clique: IMPORTAR-BANCO.bat
+  5. Duplo clique: INICIAR-SISTEMA.bat  (passo 8 - abre API + navegador)
+
+SE O PASSO 8 "NAO ACONTECE NADA":
+  1. Devem abrir DUAS coisas: janela preta "Amazon Polpas API" + navegador
+  2. Se so abriu a janela preta: use ABRIR-TELA.bat
+  3. Se a janela da API mostra erro: confira .env e IMPORTAR-BANCO.bat
+  4. Teste no navegador: http://localhost:3000/health
+
+SE O PASSO 3 DER "psql nao encontrado":
+  Execute INSTALAR-POSTGRESQL.bat e instale o PostgreSQL.
+  Depois rode IMPORTAR-BANCO.bat de novo.
+  Ou use o guia: IMPORTAR-BANCO-PGADMIN.txt
+
+USO DO DIA A DIA:
+  Duplo clique: INICIAR-SISTEMA.bat
+
+OUTROS ATALHOS:
+  ABRIR-TELA.bat              — so abre a tela no navegador
+  CONFIGURAR-PRIMEIRA-VEZ.bat — recria o .env e instala dependencias
+  IMPORTAR-BANCO.bat          — importa o PostgreSQL de novo
+
+LOGIN DE TESTE:
+  E-mail: joao@amazonpolpas.com.br
+  Senha:  Admin@2025
+  URL da API na tela: http://localhost:3000
+
+IMPORTANTE:
+  Nao feche a janela preta "Amazon Polpas API" enquanto usar o sistema.
+
+USAR DE QUALQUER LUGAR (INTERNET):
+  Leia: HOSPEDAR-NA-NUVEM.md
+  Ou duplo clique: HOSPEDAR-RAILWAY.bat
