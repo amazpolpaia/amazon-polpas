@@ -1,0 +1,27 @@
+POR QUE DEU "0 ROWS"?
+=====================
+Você colou só o FINAL do script (UPDATE e SELECT).
+Faltou o começo que CRIA os perfis e os usuários.
+
+COMO FAZER CERTO (3 arquivos pequenos)
+======================================
+
+ARQUIVO 1 — PASSO-0-TESTE.sql
+  Pasta: files\api_amazon_polpas\api\sql\
+  1. Abra no Bloco de Notas
+  2. Ctrl+A  Ctrl+C
+  3. Railway → Postgres → Query → apague tudo → Ctrl+V → Run
+  4. Se der ERRO "does not exist" → importe amazon_polpas_banco.sql inteiro primeiro
+
+ARQUIVO 2 — PASSO-1-PERFIS.sql
+  Mesmo processo. No final deve listar 5 perfis (gerente, comprador...).
+
+ARQUIVO 3 — PASSO-2-USUARIOS.sql
+  Mesmo processo. No final deve listar 2 emails (joao e igor).
+
+LOGIN NO SITE (F5 antes)
+========================
+  igor.queiroz@amazonpolpas.com.br  /  Iqs563160
+  joao@amazonpolpas.com.br          /  Admin@2025
+
+NÃO digite o SQL na mão — sempre copie o arquivo inteiro.
