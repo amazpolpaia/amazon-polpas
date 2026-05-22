@@ -1,5 +1,5 @@
 require('dotenv').config()
-const path   = require('path')
+const path    = require('path')
 const express = require('express')
 const cors    = require('cors')
 
@@ -11,8 +11,9 @@ const pesagensRoutes     = require('./routes/pesagens')
 const recepcoesRoutes    = require('./routes/recepcoes')
 const producaoRoutes     = require('./routes/producao')
 const relatoriosRoutes   = require('./routes/relatorios')
+const masterRoutes       = require('./routes/master')
 
-const app  = express()
+const app = express()
 const PORT = process.env.PORT || 3000
 const publicDir = path.join(__dirname, '../public')
 
@@ -27,12 +28,17 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use('/auth',         authRoutes)
+app.use('/auth',         masterRoutes)
 app.use('/fornecedores', fornecedoresRoutes)
 app.use('/lotes',        lotesRoutes)
 app.use('/compras',      comprasRoutes)
+app.use('/compras',      masterRoutes)
 app.use('/pesagens',     pesagensRoutes)
+app.use('/pesagens',     masterRoutes)
 app.use('/recepcoes',    recepcoesRoutes)
+app.use('/recepcoes',    masterRoutes)
 app.use('/producao',     producaoRoutes)
+app.use('/producao',     masterRoutes)
 app.use('/relatorios',   relatoriosRoutes)
 
 app.get('/health', (_req, res) => {
@@ -40,7 +46,6 @@ app.get('/health', (_req, res) => {
 })
 
 app.use(express.static(publicDir))
-
 app.get('*', (req, res, next) => {
   if (req.method !== 'GET') return next()
   res.sendFile(path.join(publicDir, 'index.html'))
