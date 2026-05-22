@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
+const { respostaComValores } = require('../utils/valores')
 
 // Gera código do lote: LOTE-20250520-SL-001
 async function gerarCodigo(fornecedor_id, data) {
@@ -32,7 +33,7 @@ router.get('/', autenticar, async (req, res) => {
 
   try {
     const { rows } = await pool.query(query, params)
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao listar lotes.' })
   }

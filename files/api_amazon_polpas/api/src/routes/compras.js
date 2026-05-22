@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
+const { respostaComValores } = require('../utils/valores')
 
 // GET /compras?data=2025-05-20
 router.get('/', autenticar, async (req, res) => {
@@ -18,7 +19,7 @@ router.get('/', autenticar, async (req, res) => {
 
   try {
     const { rows } = await pool.query(query, params)
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao listar compras.' })
   }
@@ -76,7 +77,7 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
     )
     const total = rows.reduce((s, r) => s + Number(r.total_estimado), 0)
     const latas = rows.reduce((s, r) => s + Number(r.qtd_latas_prevista), 0)
-    res.json({ itens: rows, total_estimado: total, total_latas: latas })
+    respostaComValores(req, res, { itens: rows, total_estimado: total, total_latas: latas })
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao gerar resumo do dia.' })
   }

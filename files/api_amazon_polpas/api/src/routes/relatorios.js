@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
+const { respostaComValores } = require('../utils/valores')
 
 // GET /relatorios?data=2025-05-20 — relatório do dia (prévia ou fechado)
 router.get('/', autenticar, async (req, res) => {
@@ -26,7 +27,7 @@ router.get('/', autenticar, async (req, res) => {
          ORDER BY ri.custo_por_litro ASC`,
         [fechado.id]
       )
-      return res.json({ status: 'fechado', relatorio: fechado, itens })
+      return respostaComValores(req, res, { status: 'fechado', relatorio: fechado, itens })
     }
 
     // Prévia em tempo real (usando a view)
@@ -49,7 +50,7 @@ router.get('/', autenticar, async (req, res) => {
     const custoMedio  = totalLitros > 0 ? (totalPago / totalLitros).toFixed(4) : null
     const rendMedio   = totalLatas  > 0 ? (totalLitros / totalLatas).toFixed(4) : null
 
-    res.json({
+    respostaComValores(req, res, {
       status: 'aberto',
       data,
       resumo: {
@@ -96,7 +97,8 @@ router.post('/fechar', autenticar, autorizar('gerente'), async (req, res) => {
       [relatorio_id]
     )
 
-    res.status(201).json({ relatorio, itens })
+    res.status(201)
+    respostaComValores(req, res, { relatorio, itens })
   } catch (err) {
     if (err.message.includes('já foi gerado'))
       return res.status(409).json({ erro: err.message })
@@ -115,9 +117,61 @@ router.get('/historico', autenticar, async (req, res) => {
        WHERE rd.data_operacao >= CURRENT_DATE - INTERVAL '${Number(dias)} days'
        ORDER BY rd.data_operacao DESC`
     )
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar histórico.' })
+  }
+})
+
+// GET /relatorios/periodo?inicio=2025-05-01&fim=2025-05-20 — relatórios fechados no intervalo
+router.get('/periodo', autenticar, async (req, res) => {
+  const inicio = req.query.inicio
+  const fim = req.query.fim || inicio
+
+  if (!inicio)
+    return res.status(400).json({ erro: 'Informe inicio (YYYY-MM-DD).' })
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT rd.*, f.nome AS melhor_fornecedor_nome
+       FROM relatorios_diarios rd
+       LEFT JOIN fornecedores f ON f.id = rd.melhor_fornecedor_id
+       WHERE rd.data_operacao >= $1::date AND rd.data_operacao <= $2::date
+       ORDER BY rd.data_operacao DESC`,
+      [inicio, fim]
+    )
+
+    const totais = rows.reduce(
+      (acc, r) => {
+        acc.dias += 1
+        acc.total_latas += Number(r.total_latas || 0)
+        acc.total_litros += Number(r.total_litros || 0)
+        acc.total_valor_pago += Number(r.total_valor_pago || 0)
+        return acc
+      },
+      { dias: 0, total_latas: 0, total_litros: 0, total_valor_pago: 0 }
+    )
+
+    totais.custo_medio_litro =
+      totais.total_litros > 0
+        ? (totais.total_valor_pago / totais.total_litros).toFixed(4)
+        : null
+
+    respostaComValores(req, res, {
+      inicio,
+      fim,
+      resumo: {
+        dias_fechados: totais.dias,
+        total_latas: totais.total_latas,
+        total_litros: totais.total_litros,
+        total_valor_pago: totais.total_valor_pago.toFixed(2),
+        custo_medio_litro: totais.custo_medio_litro,
+      },
+      relatorios: rows,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao buscar relatórios do período.' })
   }
 })
 
@@ -125,7 +179,7 @@ router.get('/historico', autenticar, async (req, res) => {
 router.get('/desempenho-fornecedores', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM vw_desempenho_fornecedores')
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar desempenho.' })
   }

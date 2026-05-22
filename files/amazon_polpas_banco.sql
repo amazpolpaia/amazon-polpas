@@ -38,6 +38,8 @@ CREATE TABLE usuarios (
     senha_hash    TEXT NOT NULL,           -- bcrypt hash
     perfil_id     INT NOT NULL REFERENCES perfis(id),
     ativo         BOOLEAN DEFAULT TRUE,
+    ocultar_valores BOOLEAN NOT NULL DEFAULT FALSE,
+    pode_gerenciar_usuarios BOOLEAN NOT NULL DEFAULT FALSE,
     ultimo_acesso TIMESTAMPTZ,
     criado_em     TIMESTAMPTZ DEFAULT NOW(),
     atualizado_em TIMESTAMPTZ DEFAULT NOW()

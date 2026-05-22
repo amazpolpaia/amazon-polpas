@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
+const { respostaComValores } = require('../utils/valores')
 
 // ─── DESPOLPAMENTO (módulo 5) ────────────────────────────────
 
@@ -147,7 +148,7 @@ router.get('/rendimento/:lote_id', autenticar, async (req, res) => {
       [req.params.lote_id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Rendimento não calculado ainda.' })
-    res.json(rows[0])
+    respostaComValores(req, res, rows[0])
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar rendimento.' })
   }
@@ -167,7 +168,7 @@ router.get('/comparativo-dia', autenticar, async (req, res) => {
        ORDER BY rd.custo_por_litro ASC`,
       [data]
     )
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao gerar comparativo.' })
   }

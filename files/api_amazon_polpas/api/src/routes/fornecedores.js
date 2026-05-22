@@ -1,6 +1,7 @@
 const router = require('express').Router()
 const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
+const { respostaComValores } = require('../utils/valores')
 
 // GET /fornecedores
 router.get('/', autenticar, async (req, res) => {
@@ -18,7 +19,7 @@ router.get('/', autenticar, async (req, res) => {
        GROUP BY f.id
        ORDER BY f.nome`
     )
-    res.json(rows)
+    respostaComValores(req, res, rows)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao listar fornecedores.' })
   }
