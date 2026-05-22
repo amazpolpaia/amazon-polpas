@@ -1,5 +1,5 @@
 -- Railway → Postgres → Query → cole TUDO → Run
--- Depois F5 no site e entre com Igor ou João.
+-- No final TEM QUE aparecer 2 linhas (joao e igor).
 
 ALTER TABLE usuarios
   ADD COLUMN IF NOT EXISTS ocultar_valores BOOLEAN NOT NULL DEFAULT FALSE,
@@ -7,7 +7,7 @@ ALTER TABLE usuarios
 
 -- João — senha: Admin@2025
 UPDATE usuarios SET
-  senha_hash = '$2a$10$THBYHDEM0Pr0rl5SMYqZZe.bg0xQZRkjUYPNgos8dcaQg46StaWC2',
+  senha_hash = '$2a$10$2Qa9qhbnNXCcmx.NRLnSruwH.zeknc61/0GK/v3mfmyQ31BrK3kqy',
   ativo = TRUE
 WHERE email = 'joao@amazonpolpas.com.br';
 
@@ -16,7 +16,7 @@ INSERT INTO usuarios (nome, email, senha_hash, perfil_id, ativo, ocultar_valores
 SELECT
   'Igor Queiroz',
   'igor.queiroz@amazonpolpas.com.br',
-  '$2a$10$pWAHvL.k0nQBfIZ5GE1za.ldwX8OghOiubwIcodch6cx/eRRmXYxS',
+  '$2a$10$azM8wQm7fNA5WK9rQQvBV.XEhaC9Y9NUWUtI9AhkrTz5FU4pePfQW',
   (SELECT id FROM perfis WHERE nome = 'gerente'),
   TRUE,
   FALSE,
@@ -26,13 +26,12 @@ WHERE NOT EXISTS (
 );
 
 UPDATE usuarios SET
-  senha_hash = '$2a$10$pWAHvL.k0nQBfIZ5GE1za.ldwX8OghOiubwIcodch6cx/eRRmXYxS',
+  senha_hash = '$2a$10$azM8wQm7fNA5WK9rQQvBV.XEhaC9Y9NUWUtI9AhkrTz5FU4pePfQW',
   perfil_id = (SELECT id FROM perfis WHERE nome = 'gerente'),
   ativo = TRUE,
   ocultar_valores = FALSE,
   pode_gerenciar_usuarios = TRUE
 WHERE email = 'igor.queiroz@amazonpolpas.com.br';
 
--- TEM QUE APARECER 2 LINHAS:
 SELECT email, ativo FROM usuarios
 WHERE email IN ('joao@amazonpolpas.com.br', 'igor.queiroz@amazonpolpas.com.br');
