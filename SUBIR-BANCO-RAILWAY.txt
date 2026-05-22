@@ -1,0 +1,40 @@
+FORMA DIRETA — SUBIR O BANCO NO RAILWAY
+=======================================
+
+Voce NAO precisa mais colar SQL pedaco por pedaco no site.
+
+OPCAO A — UM CLIQUE NO PC (recomendado)
+---------------------------------------
+1. Instale PostgreSQL no Windows (se ainda nao tiver):
+   https://www.postgresql.org/download/windows/
+   (pode usar o instalador; marque "Command Line Tools")
+
+2. No Railway:
+   - Clique no bloco POSTGRES
+   - Botao "Connect" (canto superior direito)
+   - Ative "Public Network" se estiver desligado
+   - Copie a URL que comeca com postgresql://
+
+3. No PC: duplo clique em IMPORTAR-RAILWAY.bat
+
+4. Cole a URL quando pedir e Enter
+
+5. Aguarde "Pronto!". Abra o site e entre com Igor ou Joao.
+
+
+OPCAO B — SO CORRIGIR USUARIOS (banco ja tem tabelas)
+------------------------------------------------------
+Se o passo A der erro de "ja existe", rode no PC:
+
+   powershell -File scripts\importar-railway.ps1
+
+   (mesma URL)
+
+Ou no Railway Query, cole SO o arquivo:
+   files\api_amazon_polpas\api\sql\RAILWAY-FINALIZAR.sql
+
+
+LOGIN
+-----
+  igor.queiroz@amazonpolpas.com.br / Iqs563160
+  joao@amazonpolpas.com.br / Admin@2025
