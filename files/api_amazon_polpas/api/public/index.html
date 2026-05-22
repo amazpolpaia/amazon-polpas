@@ -89,7 +89,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .met-label{font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.7px;font-weight:700}
 .met-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);letter-spacing:-1px}
 .met-val span{font-size:12px;font-weight:500;color:var(--text3)}
-.met-d{font-size:11px;margin-top:5px;color:var(--green-dark)}
 .fg{margin-bottom:13px}
 .fl{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:600}
 .fi{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border .15s}
@@ -148,6 +147,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* Editar modal */
+.edit-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:998}
+.edit-modal-bg.show{display:flex}
+.edit-modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -156,13 +159,27 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 <div class="modal-bg" id="api-modal">
   <div class="modal">
     <div class="modal-title">Configurar URL da API</div>
-    <div class="modal-sub">Endereço onde a API Node.js está rodando</div>
+    <div class="modal-sub">Endereço onde a API está rodando</div>
     <div class="fg"><label class="fl">URL da API</label><input class="fi" id="api-url-input" value=""></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-p" style="flex:1" onclick="salvarUrl()">Salvar</button>
       <button class="btn btn-gh" onclick="usarDemo()">Modo demo</button>
     </div>
     <p style="font-size:11px;color:var(--text3);margin-top:12px;text-align:center">No modo demo os dados são simulados sem banco de dados.</p>
+  </div>
+</div>
+
+<!-- MODAL EDITAR DADOS -->
+<div class="edit-modal-bg" id="edit-modal">
+  <div class="edit-modal">
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px" id="edit-modal-title">Editar dados</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:20px" id="edit-modal-sub">Corrija os campos e salve</div>
+    <div class="sb2 show" id="edit-ok" style="display:none">✓ Dados atualizados com sucesso!</div>
+    <div id="edit-campos"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-p" style="flex:1" id="edit-salvar-btn" onclick="confirmarEdicao()">Salvar alterações</button>
+      <button class="btn btn-gh" onclick="fecharEditModal()">Cancelar</button>
+    </div>
   </div>
 </div>
 
@@ -175,8 +192,8 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
     <div class="login-title">Entrar no sistema</div>
     <div class="login-error" id="lerr"></div>
-    <div class="fg"><label class="fl">E-mail</label><input class="fi" id="lemail" type="email" value="joao@amazonpolpas.com.br"></div>
-    <div class="fg"><label class="fl">Senha</label><input class="fi" id="lsenha" type="password" value="Admin@2025" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
+    <div class="fg"><label class="fl">E-mail</label><input class="fi" id="lemail" type="email" autocomplete="username"></div>
+    <div class="fg"><label class="fl">Senha</label><input class="fi" id="lsenha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')fazerLogin()"></div>
     <button class="btn btn-p" id="btnlogin" style="width:100%;margin-top:4px" onclick="fazerLogin()">Entrar</button>
     <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:16px">Sem API? <a href="#" onclick="usarDemo();return false" style="color:var(--purple)">Usar modo demo</a></p>
   </div>
@@ -201,7 +218,10 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <button class="sb-item" id="n6" onclick="go(6)"><span class="sb-num">7</span>Relatório final</button>
     <div class="sb-section">Geral</div>
     <button class="sb-item" id="n7" onclick="go(7)"><span class="sb-num" style="font-size:9px">◈</span>Fornecedores</button>
-    <button class="sb-item" id="n8" onclick="go(8)" style="display:none"><span class="sb-num" style="font-size:9px">⚙</span>Usuários e acessos</button>
+    <div class="sb-section" id="sb-master-sec" style="display:none">Master</div>
+    <button class="sb-item" id="n8" onclick="go(8)" style="display:none"><span class="sb-num">👥</span>Usuários</button>
+    <button class="sb-item" id="n9" onclick="go(9)" style="display:none"><span class="sb-num">✎</span>Editar dados</button>
+    <button class="sb-item" id="n10" onclick="go(10)" style="display:none"><span class="sb-num">📅</span>Histórico</button>
     <div class="sb-footer">
       <div class="sb-user">
         <div class="sb-avatar" id="savatar">--</div>
@@ -226,27 +246,15 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S0 -->
 <div class="screen active" id="s0">
-  <div class="section-header">
-    <div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div>
-    <span class="badge bw" id="s0date"></span>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div><span class="badge bw" id="s0date"></span></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Nova ordem de compra</div><div class="card-sub">Registrar lote negociado com fornecedor</div>
       <div class="sb2" id="ok0">Ordem registrada com sucesso!</div>
       <div class="fg"><label class="fl">Fornecedor</label><select class="fi" id="cf"></select></div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Qtd. latas (14 kg)</label><input class="fi" type="number" id="cl" placeholder="ex: 120" oninput="calcC()"></div>
-        <div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="cp" placeholder="ex: 28.50" oninput="calcC()"></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Data de entrega</label><input class="fi" type="date" id="cd"></div>
-        <div class="fg"><label class="fl">Condição</label><select class="fi" id="cc"><option>Ótima</option><option>Boa</option><option>Regular</option></select></div>
-      </div>
-      <div class="rb">
-        <div><div class="rb-lbl">Total estimado</div><div class="rb-val" id="ctotal">R$ —</div></div>
-        <button class="btn btn-p" id="bc0" onclick="regCompra()">Registrar ordem</button>
-      </div>
+      <div class="fr"><div class="fg"><label class="fl">Qtd. latas (14 kg)</label><input class="fi" type="number" id="cl" placeholder="ex: 120" oninput="calcC()"></div><div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="cp" placeholder="ex: 28.50" oninput="calcC()"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Data de entrega</label><input class="fi" type="date" id="cd"></div><div class="fg"><label class="fl">Condição</label><select class="fi" id="cc"><option>Ótima</option><option>Boa</option><option>Regular</option></select></div></div>
+      <div class="rb"><div><div class="rb-lbl">Total estimado</div><div class="rb-val" id="ctotal">R$ —</div></div><button class="btn btn-p" id="bc0" onclick="regCompra()">Registrar ordem</button></div>
     </div>
     <div class="card cp"><div class="card-title">Ordens do dia</div><div class="card-sub">Fornecedores agendados</div><div id="lista0"><div class="ls">Carregando...</div></div></div>
   </div>
@@ -254,19 +262,14 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S1 -->
 <div class="screen" id="s1">
-  <div class="section-header sh-green">
-    <div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div>
-  </div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de chegada</div><div class="card-sub">Pesagem e horário de entrada</div>
       <div class="sb2" id="ok1">Pesagem de chegada registrada!</div>
-      <div class="fg"><label class="fl">Lote</label><select class="fi" id="b1lote" onchange="selLote1()"></select></div>
+      <div class="fg"><label class="fl">Lote</label><select class="fi" id="b1lote"></select></div>
       <div class="fg"><label class="fl">Placa do veículo</label><input class="fi" type="text" id="b1placa" placeholder="BRA-2E19"></div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Horário de chegada</label><input class="fi" type="time" id="b1hora"></div>
-        <div class="fg"><label class="fl">Peso bruto (kg)</label><input class="fi" type="number" id="b1bruto" oninput="calcCarga1()"></div>
-      </div>
+      <div class="fr"><div class="fg"><label class="fl">Horário de chegada</label><input class="fi" type="time" id="b1hora"></div><div class="fg"><label class="fl">Peso bruto (kg)</label><input class="fi" type="number" id="b1bruto" oninput="calcCarga1()"></div></div>
       <div class="fg"><label class="fl">Tara estimada (kg)</label><input class="fi" type="number" id="b1tara" oninput="calcCarga1()"></div>
       <div class="sr sr-g"><span class="fw7 tg">Carga estimada</span><span class="mn fw7 tg" id="b1carga">— kg</span></div>
       <button class="btn btn-p" style="width:100%;margin-top:12px" id="bc1" onclick="regChegada()">Registrar chegada</button>
@@ -277,21 +280,15 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S2 -->
 <div class="screen" id="s2">
-  <div class="section-header">
-    <div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Contagem de latas</div><div class="card-sub">Registro do descarregamento</div>
       <div class="sb2" id="ok2">Recepção registrada com sucesso!</div>
       <div class="fg"><label class="fl">Lote em descarregamento</label><select class="fi" id="r2lote" onchange="selLote2()"></select></div>
       <div class="ib" id="r2info" style="display:none"></div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Latas contadas (14 kg)</label><input class="fi" type="number" id="r2latas" placeholder="ex: 118"></div>
-        <div class="fg"><label class="fl">Latas previstas</label><input class="fi" type="number" id="r2prev" disabled></div>
-      </div>
-      <div class="fg"><label class="fl">Condição do fruto</label>
-        <select class="fi" id="r2cond"><option value="otima">Ótima</option><option value="boa">Boa</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select></div>
+      <div class="fr"><div class="fg"><label class="fl">Latas contadas (14 kg)</label><input class="fi" type="number" id="r2latas" placeholder="ex: 118"></div><div class="fg"><label class="fl">Latas previstas</label><input class="fi" type="number" id="r2prev" disabled></div></div>
+      <div class="fg"><label class="fl">Condição do fruto</label><select class="fi" id="r2cond"><option value="otima">Ótima</option><option value="boa">Boa</option><option value="regular">Regular</option><option value="ruim">Ruim</option></select></div>
       <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="r2obs" placeholder="Divergências ou problemas?"></div>
       <button class="btn btn-p" style="width:100%" id="bc2" onclick="regRecepcao()">Confirmar recepção</button>
     </div>
@@ -301,9 +298,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S3 -->
 <div class="screen" id="s3">
-  <div class="section-header sh-green">
-    <div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div>
-  </div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Pesagem pós-descarga</div><div class="card-sub">Cálculo do peso líquido</div>
@@ -320,22 +315,14 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S4 -->
 <div class="screen" id="s4">
-  <div class="section-header">
-    <div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de despolpamento</div><div class="card-sub">Litros extraídos por lote</div>
       <div class="sb2" id="ok4">Despolpamento registrado!</div>
       <div class="fg"><label class="fl">Lote</label><select class="fi" id="d4lote" onchange="selLote4()"></select></div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Latas processadas</label><input class="fi" type="number" id="d4latas" oninput="calcD4()"></div>
-        <div class="fg"><label class="fl">Litros extraídos total</label><input class="fi" type="number" id="d4litros" placeholder="ex: 944" oninput="calcD4()"></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label class="fl">Turno</label><select class="fi" id="d4turno"><option value="manha">Manhã (06h–14h)</option><option value="tarde">Tarde (14h–22h)</option></select></div>
-        <div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="d4op" placeholder="Nome do operador"></div>
-      </div>
+      <div class="fr"><div class="fg"><label class="fl">Latas processadas</label><input class="fi" type="number" id="d4latas" oninput="calcD4()"></div><div class="fg"><label class="fl">Litros extraídos total</label><input class="fi" type="number" id="d4litros" placeholder="ex: 944" oninput="calcD4()"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Turno</label><select class="fi" id="d4turno"><option value="manha">Manhã (06h–14h)</option><option value="tarde">Tarde (14h–22h)</option></select></div><div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="d4op" placeholder="Nome do operador"></div></div>
       <div class="sr sr-g"><span class="fw7 tg">Rendimento calculado</span><span class="mn fw7 tg" style="font-size:17px" id="d4rend">—</span></div>
       <button class="btn btn-p" style="width:100%;margin-top:14px" id="bc4" onclick="regDesp()">Registrar despolpamento</button>
     </div>
@@ -345,9 +332,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S5 -->
 <div class="screen" id="s5">
-  <div class="section-header">
-    <div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Calcular custo por litro</div><div class="card-sub">Consolida dados do lote automaticamente</div>
@@ -365,20 +350,20 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   <div class="section-header sh-duo">
     <div><div class="sh-title" id="r6title">Relatório final</div><div class="sh-sub" id="r6sub">Consolidado do dia</div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <input class="fi" type="date" id="r6data" style="width:auto;padding:8px 12px" onchange="loadS6()">
+      <input class="fi" type="date" id="r6data" style="width:auto;padding:8px 12px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff" onchange="loadS6()">
       <button class="btn btn-w" onclick="window.print()">Imprimir</button>
       <button class="btn btn-y" id="bc6" onclick="fecharDia()">Fechar dia</button>
     </div>
   </div>
-  <div class="card" style="margin-bottom:14px">
+  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--purple)">
     <div class="card-title">Relatório por período</div>
-    <div class="card-sub">Dias já fechados entre duas datas</div>
-    <div class="fr" style="margin-top:10px">
-      <div class="fg"><label class="fl">De</label><input class="fi" type="date" id="r6ini"></div>
-      <div class="fg"><label class="fl">Até</label><input class="fi" type="date" id="r6fim"></div>
-      <div class="fg" style="align-self:flex-end"><button class="btn btn-p" onclick="loadPeriodo()">Buscar período</button></div>
+    <div class="card-sub">Consulte dias fechados entre duas datas</div>
+    <div class="fr" style="margin-top:8px;align-items:flex-end">
+      <div class="fg" style="margin-bottom:0"><label class="fl">De</label><input class="fi" type="date" id="r6ini"></div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Até</label><input class="fi" type="date" id="r6fim"></div>
+      <button class="btn btn-p" onclick="loadPeriodo()" style="margin-bottom:0">Buscar</button>
     </div>
-    <div id="r6periodo" style="margin-top:12px"><div class="ls">Informe as datas e clique em Buscar período.</div></div>
+    <div id="r6periodo" style="margin-top:12px"></div>
   </div>
   <div class="g4">
     <div class="met mg"><div class="met-label">Total latas</div><div class="met-val" id="m1">—</div></div>
@@ -392,55 +377,92 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S7 -->
 <div class="screen" id="s7">
-  <div class="section-header">
-    <div><div class="sh-title">Fornecedores</div><div class="sh-sub">Cadastro e histórico de desempenho</div></div>
-    <button class="btn btn-y" onclick="novoForn()">+ Novo fornecedor</button>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Fornecedores</div><div class="sh-sub">Cadastro e histórico de desempenho</div></div><button class="btn btn-y" onclick="novoForn()">+ Novo fornecedor</button></div>
   <div class="card" id="lista7"><div class="ls">Carregando...</div></div>
 </div>
 
-<!-- S8 -->
+<!-- S8: USUÁRIOS (Master) -->
 <div class="screen" id="s8">
-  <div class="section-header">
-    <div><div class="sh-title">Usuários e acessos</div><div class="sh-sub">Criar, editar perfis e permissões (administrador)</div></div>
-    <button class="btn btn-y" onclick="novoUsuario()">+ Novo usuário</button>
-  </div>
+  <div class="section-header"><div><div class="sh-title">Gestão de usuários</div><div class="sh-sub">Criar, editar e desativar usuários do sistema</div></div><button class="btn btn-y" onclick="abrirFormUsuario(null)">+ Novo usuário</button></div>
   <div class="g2">
     <div class="card" id="lista8"><div class="ls">Carregando...</div></div>
     <div class="card" id="form8" style="display:none">
-      <div class="card-title" id="form8tit">Editar usuário</div>
+      <div class="card-title" id="form8tit">Novo usuário</div>
       <input type="hidden" id="u8id">
-      <div class="fg"><label class="fl">Nome</label><input class="fi" id="u8nome"></div>
-      <div class="fg"><label class="fl">E-mail</label><input class="fi" type="email" id="u8email"></div>
-      <div class="fg"><label class="fl">Senha</label><input class="fi" type="password" id="u8senha" placeholder="Deixe em branco para manter"></div>
-      <div class="fg"><label class="fl">Perfil de acesso</label><select class="fi" id="u8perfil"></select></div>
-      <div class="fg"><label class="fl"><input type="checkbox" id="u8ativo" checked> Usuário ativo</label></div>
-      <div class="fg"><label class="fl"><input type="checkbox" id="u8ocultar"> Ocultar valores (R$) para este usuário</label></div>
-      <div class="fg"><label class="fl"><input type="checkbox" id="u8gerencia"> Pode gerenciar usuários e acessos</label></div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-p" onclick="salvarUsuario()">Salvar</button>
-        <button class="btn btn-w" onclick="cancelarForm8()">Cancelar</button>
+      <div class="fg"><label class="fl">Nome completo</label><input class="fi" id="u8nome" placeholder="Nome do operador"></div>
+      <div class="fg"><label class="fl">E-mail</label><input class="fi" type="email" id="u8email" placeholder="email@amazonpolpas.com.br"></div>
+      <div class="fg"><label class="fl">Senha <span style="color:var(--text3);font-weight:400">(deixe em branco para manter)</span></label><input class="fi" type="password" id="u8senha" placeholder="Mínimo 6 caracteres"></div>
+      <div class="fg"><label class="fl">Perfil de acesso</label>
+        <select class="fi" id="u8perfil">
+          <option value="1">Gerente — acesso total</option>
+          <option value="2">Comprador — módulo 1</option>
+          <option value="3">Balança — módulos 2 e 4</option>
+          <option value="4">Recepção — módulo 3</option>
+          <option value="5">Produção — módulos 5 e 6</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8ativo" checked> Usuário ativo</label></div>
+      <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8ocultar"> Ocultar valores (R$) para este usuário</label></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-p" style="flex:1" onclick="salvarUsuario()">Salvar</button>
+        <button class="btn btn-gh" onclick="document.getElementById('form8').style.display='none'">Cancelar</button>
       </div>
     </div>
   </div>
+</div>
+
+<!-- S9: EDITAR DADOS (Master) -->
+<div class="screen" id="s9">
+  <div class="section-header"><div><div class="sh-title">Editar dados</div><div class="sh-sub">Corrigir informações de qualquer módulo e data</div></div></div>
+  <div class="g2">
+    <div class="card cg">
+      <div class="card-title">Selecionar lote para editar</div><div class="card-sub">Escolha a data, lote e módulo</div>
+      <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="e9data" onchange="carregaLotesEdicao()"></div>
+      <div class="fg"><label class="fl">Lote</label><select class="fi" id="e9lote" onchange="carregaCamposEdicao()"></select></div>
+      <div class="fg"><label class="fl">Módulo para editar</label>
+        <select class="fi" id="e9modulo" onchange="carregaCamposEdicao()">
+          <option value="compra">Compra de fruto</option>
+          <option value="chegada">Balança — chegada</option>
+          <option value="recepcao">Recepção de fruto</option>
+          <option value="saida">Balança — saída</option>
+          <option value="despolpa">Despolpamento</option>
+        </select>
+      </div>
+    </div>
+    <div class="card cp">
+      <div class="card-title">Dados para edição</div><div class="card-sub">Edite os campos e salve</div>
+      <div class="sb2" id="e9ok">✓ Dados atualizados com sucesso!</div>
+      <div id="e9campos"><div class="ls">Selecione um lote e módulo</div></div>
+      <div id="e9salvar" style="display:none;margin-top:14px">
+        <button class="btn btn-p" style="width:100%" onclick="salvarEdicao()">Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- S10: HISTÓRICO (Master) -->
+<div class="screen" id="s10">
+  <div class="section-header sh-duo"><div><div class="sh-title">Histórico de relatórios</div><div class="sh-sub">Consulte o relatório completo de qualquer data</div></div></div>
+  <div class="card" style="margin-bottom:16px;border-left:4px solid var(--green)">
+    <div class="card-title">Selecionar data</div>
+    <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px">
+      <div class="fg" style="flex:1;margin-bottom:0"><label class="fl">Data do relatório</label><input class="fi" type="date" id="h10data"></div>
+      <button class="btn btn-p" onclick="carregarHistorico()">Buscar relatório</button>
+    </div>
+  </div>
+  <div id="h10resultado"></div>
 </div>
 
     </div>
   </div>
 </div>
 <script>
-let AU='',TK='',US=null,DEMO=false,LOTES=[],FORNS=[]
+let AU='',TK='',US=null,DEMO=false,LOTES=[],FORNS=[],LOTES_ED=[]
 const HOJE=new Date().toISOString().split('T')[0]
-const DF=[
-  {id:1,nome:'Fazenda São Lucas',municipio:'Cametá',total_lotes:12,media_rendimento:8.0,media_custo_litro:3.5625,ativo:true},
-  {id:2,nome:'Sítio Beija-Flor',municipio:'Moju',total_lotes:8,media_rendimento:7.8,media_custo_litro:3.3333,ativo:true},
-  {id:3,nome:'Chácara Boa Vista',municipio:'Abaetetuba',total_lotes:5,media_rendimento:8.0,media_custo_litro:3.75,ativo:true}
-]
-const DL=[
-  {lote_id:'l1',id:'l1',codigo:'LOTE-20250520-SL-001',fornecedor:'Fazenda São Lucas',fornecedor_id:1,status:'despolpado',qtd_latas_prevista:120,preco_por_lata:28.50,hora_chegada:'07:14',peso_bruto_kg:14820,qtd_latas_recebidas:118,peso_saida_kg:8180,peso_liquido_kg:6640,litros_extraidos:944,rendimento_l_lata:8.0,custo_por_litro:3.5625},
-  {lote_id:'l2',id:'l2',codigo:'LOTE-20250520-BF-001',fornecedor:'Sítio Beija-Flor',fornecedor_id:2,status:'descarregado',qtd_latas_prevista:80,preco_por_lata:26.00,hora_chegada:'08:02',peso_bruto_kg:11400,qtd_latas_recebidas:80,peso_saida_kg:null,peso_liquido_kg:null,litros_extraidos:null,rendimento_l_lata:null,custo_por_litro:null},
-  {lote_id:'l3',id:'l3',codigo:'LOTE-20250520-BV-001',fornecedor:'Chácara Boa Vista',fornecedor_id:3,status:'aberto',qtd_latas_prevista:60,preco_por_lata:30.00,hora_chegada:null,peso_bruto_kg:null,qtd_latas_recebidas:null,peso_saida_kg:null,peso_liquido_kg:null,litros_extraidos:null,rendimento_l_lata:null,custo_por_litro:null}
-]
+
+// DEMO DATA
+const DF=[{id:1,nome:'Fazenda São Lucas',municipio:'Cametá',total_lotes:12,media_rendimento:8.0,media_custo_litro:3.5625,ativo:true},{id:2,nome:'Sítio Beija-Flor',municipio:'Moju',total_lotes:8,media_rendimento:7.8,media_custo_litro:3.3333,ativo:true},{id:3,nome:'Chácara Boa Vista',municipio:'Abaetetuba',total_lotes:5,media_rendimento:8.0,media_custo_litro:3.75,ativo:true}]
+const DL=[{lote_id:'l1',id:'l1',codigo:'LOTE-20250520-SL-001',fornecedor:'Fazenda São Lucas',fornecedor_id:1,status:'despolpado',qtd_latas_prevista:120,preco_por_lata:28.50,hora_chegada:'07:14',peso_bruto_kg:14820,qtd_latas_recebidas:118,peso_saida_kg:8180,peso_liquido_kg:6640,litros_extraidos:944,rendimento_l_lata:8.0,custo_por_litro:3.5625},{lote_id:'l2',id:'l2',codigo:'LOTE-20250520-BF-001',fornecedor:'Sítio Beija-Flor',fornecedor_id:2,status:'descarregado',qtd_latas_prevista:80,preco_por_lata:26.00,hora_chegada:'08:02',peso_bruto_kg:11400,qtd_latas_recebidas:80},{lote_id:'l3',id:'l3',codigo:'LOTE-20250520-BV-001',fornecedor:'Chácara Boa Vista',fornecedor_id:3,status:'aberto',qtd_latas_prevista:60,preco_por_lata:30.00}]
 
 async function req(m,r,b){
   if(DEMO)return simDemo(m,r,b)
@@ -449,7 +471,6 @@ async function req(m,r,b){
   if(!res.ok)throw new Error(d.erro||'Erro')
   return d
 }
-
 function simDemo(m,r){
   if(r.includes('/fornecedores'))return Promise.resolve(DF)
   if(r.includes('/lotes'))return Promise.resolve(DL)
@@ -462,41 +483,31 @@ function simDemo(m,r){
   return Promise.resolve([])
 }
 
-function urlApiPadrao(){
-  if(location.protocol==='file:')return 'http://localhost:3000'
-  if(location.protocol==='http:'||location.protocol==='https:')return location.origin.replace(/\/$/,'')
-  return 'http://localhost:3000'
+function urlPadrao(){
+  if(location.protocol==='file:')return ''
+  return location.origin.replace(/\/$/,'')
 }
 
 window.onload=()=>{
   document.getElementById('tdate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})
   document.getElementById('s0date').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})
-  const h=document.getElementById('b1hora')
-  if(h)h.value=new Date().toTimeString().slice(0,5)
-  const padrao=urlApiPadrao()
-  document.getElementById('api-url-input').value=padrao
+  const h=document.getElementById('b1hora');if(h)h.value=new Date().toTimeString().slice(0,5)
+  const pad=urlPadrao()
+  document.getElementById('api-url-input').value=pad
   AU=localStorage.getItem('api_url')||''
-  if(location.protocol!=='file:'&&!AU){AU=padrao;localStorage.setItem('api_url',AU)}
+  if(location.protocol!=='file:'&&!AU){AU=pad;localStorage.setItem('api_url',AU)}
   TK=localStorage.getItem('token')||''
   try{US=JSON.parse(localStorage.getItem('usuario'))}catch(e){}
+  const r6d=document.getElementById('r6data');if(r6d)r6d.value=HOJE
+  const r6i=document.getElementById('r6ini');if(r6i)r6i.value=HOJE
+  const r6f=document.getElementById('r6fim');if(r6f)r6f.value=HOJE
+  const e9d=document.getElementById('e9data');if(e9d)e9d.value=HOJE
   if(TK&&US)mostrarApp()
   else if(!AU)document.getElementById('api-modal').classList.add('show')
 }
 
-function salvarUrl(){
-  const u=document.getElementById('api-url-input').value.trim().replace(/\/$/,'')
-  if(!u)return
-  AU=u; localStorage.setItem('api_url',u)
-  document.getElementById('api-modal').classList.remove('show')
-}
-
-function usarDemo(){
-  DEMO=true; TK='demo'
-  US={nome:'Gerente Demo',email:'demo@amazonpolpas.com.br',perfil:'gerente'}
-  document.getElementById('api-modal').classList.remove('show')
-  document.getElementById('login-wrap').style.display='none'
-  mostrarApp()
-}
+function salvarUrl(){const u=document.getElementById('api-url-input').value.trim().replace(/\/$/,'');if(!u)return;AU=u;localStorage.setItem('api_url',u);document.getElementById('api-modal').classList.remove('show')}
+function usarDemo(){DEMO=true;TK='demo';US={nome:'Gerente Demo',email:'demo@amazonpolpas.com.br',perfil:'gerente'};document.getElementById('api-modal').classList.remove('show');document.getElementById('login-wrap').style.display='none';mostrarApp()}
 
 async function fazerLogin(){
   if(!AU){document.getElementById('api-modal').classList.add('show');return}
@@ -504,12 +515,15 @@ async function fazerLogin(){
   btn.classList.add('loading');btn.disabled=true;err.classList.remove('show')
   try{
     const d=await req('POST','/auth/login',{email:document.getElementById('lemail').value,senha:document.getElementById('lsenha').value})
-    TK=d.token;US=d.usuario
-    localStorage.setItem('token',TK);localStorage.setItem('usuario',JSON.stringify(US))
+    TK=d.token;US=d.usuario;localStorage.setItem('token',TK);localStorage.setItem('usuario',JSON.stringify(US))
     mostrarApp()
   }catch(e){err.textContent=e.message;err.classList.add('show')}
   finally{btn.classList.remove('loading');btn.disabled=false}
 }
+
+function ocultaVal(){return !!(US&&US.ocultar_valores)}
+function fmtMoeda(v,dec=2){if(ocultaVal())return '***';if(v==null||v==='')return '—';return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})}
+function ehMaster(){return !!(US&&US.perfil==='gerente')}
 
 function mostrarApp(){
   document.getElementById('login-wrap').style.display='none'
@@ -517,48 +531,31 @@ function mostrarApp(){
   document.getElementById('snome').textContent=US.nome
   document.getElementById('sperfil').textContent=US.perfil
   document.getElementById('savatar').textContent=US.nome.split(' ').map(p=>p[0]).join('').toUpperCase().slice(0,2)
-  if(DEMO){
-    document.getElementById('sbmodo').textContent='Modo demonstração'
-    const cs=document.getElementById('cstatus')
-    cs.textContent='◉ Modo demo';cs.style.cssText='background:var(--yellow-light);color:var(--yellow-dark);border:1px solid #f5c51833'
-  }else{
-    document.getElementById('cstatus').textContent='● API conectada'
+  if(DEMO){document.getElementById('sbmodo').textContent='Modo demo';const cs=document.getElementById('cstatus');cs.textContent='◉ Demo';cs.style.cssText='background:var(--yellow-light);color:var(--yellow-dark);border:1px solid #f5c51833'}
+  else document.getElementById('cstatus').textContent='● API conectada'
+  // Mostra seção Master só para gerente
+  if(ehMaster()){
+    document.getElementById('sb-master-sec').style.display=''
+    document.getElementById('n8').style.display=''
+    document.getElementById('n9').style.display=''
+    document.getElementById('n10').style.display=''
   }
-  const r6d=document.getElementById('r6data')
-  if(r6d)r6d.value=HOJE
-  const r6i=document.getElementById('r6ini'),r6f=document.getElementById('r6fim')
-  if(r6i)r6i.value=HOJE
-  if(r6f)r6f.value=HOJE
   aplicarPerms();carregaForns();loadS0()
 }
 
-function ocultaVal(){return !!(US&&US.ocultar_valores)}
-function fmtMoeda(v,dec=2){
-  if(ocultaVal()||v==='***')return '***'
-  if(v==null||v==='')return '—'
-  return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})
-}
-function podeAdmin(){return !!(US&&(US.pode_gerenciar_usuarios||US.email==='igor.queiroz@amazonpolpas.com.br'))}
-
 function aplicarPerms(){
-  const bloq={comprador:[1,2,3,4,5,8],balanca:[0,2,4,5,6,7,8],recepcao:[0,1,3,4,5,7,8],producao:[0,1,2,3,7,8]}
+  const bloq={comprador:[1,2,3,4,5],balanca:[0,2,4,5,6,7],recepcao:[0,1,3,4,5,7],producao:[0,1,2,3,7]}
   if(US.perfil!=='gerente'&&bloq[US.perfil])
     bloq[US.perfil].forEach(i=>{const e=document.getElementById('n'+i);if(e)e.classList.add('locked')})
-  const n8=document.getElementById('n8')
-  if(n8){
-    if(podeAdmin()){n8.style.display='';n8.classList.remove('locked')}
-    else{n8.style.display='none'}
-  }
 }
-
 function logout(){localStorage.removeItem('token');localStorage.removeItem('usuario');location.reload()}
 
-const TITLES=['Compra de fruto','Balança — chegada','Recepção de fruto','Balança — saída','Despolpamento','Rendimento','Relatório final','Fornecedores','Usuários e acessos']
-const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,loadS7,loadS8]
+const TITLES=['Compra de fruto','Balança — chegada','Recepção de fruto','Balança — saída','Despolpamento','Rendimento','Relatório final','Fornecedores','Usuários','Editar dados','Histórico']
+const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,loadS7,loadS8,loadS9,loadS10]
 
 function go(n){
   const nav=document.getElementById('n'+n)
-  if(nav&&nav.classList.contains('locked')){alert('Seu perfil não tem acesso a este módulo.');return}
+  if(nav&&nav.classList.contains('locked')){alert('Sem acesso a este módulo.');return}
   document.querySelectorAll('.screen').forEach((s,i)=>s.classList.toggle('active',i===n))
   document.querySelectorAll('.sb-item').forEach((b,i)=>b.classList.toggle('active',i===n))
   document.getElementById('ttitle').textContent=TITLES[n]
@@ -566,303 +563,192 @@ function go(n){
   LOADERS[n]()
 }
 
-async function carregaForns(){
-  try{FORNS=await req('GET','/fornecedores');const s=document.getElementById('cf');s.innerHTML=FORNS.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')}catch(e){}
-}
-
-async function carregaLotes(){
-  try{LOTES=await req('GET','/lotes?data='+HOJE)}catch(e){LOTES=DL}
-}
-
-function fillSelect(id,filtro){
-  const s=document.getElementById(id)
-  const lst=filtro?LOTES.filter(l=>filtro.includes(l.status)):LOTES
-  s.innerHTML=lst.length?lst.map(l=>`<option value="${l.lote_id||l.id}">${l.codigo} — ${l.fornecedor}</option>`).join(''):'<option value="">Nenhum lote disponível</option>'
-}
-
+async function carregaForns(){try{FORNS=await req('GET','/fornecedores');const s=document.getElementById('cf');s.innerHTML=FORNS.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')}catch(e){}}
+async function carregaLotes(){try{LOTES=await req('GET','/lotes?data='+HOJE)}catch(e){LOTES=DL}}
+function fillSelect(id,filtro){const s=document.getElementById(id);const lst=filtro?LOTES.filter(l=>filtro.includes(l.status)):LOTES;s.innerHTML=lst.length?lst.map(l=>`<option value="${l.lote_id||l.id}">${l.codigo} — ${l.fornecedor}</option>`).join(''):'<option value="">Nenhum lote disponível</option>'}
 function getLote(id){return LOTES.find(l=>(l.lote_id||l.id)===id)}
-
 function ok(id){const e=document.getElementById(id);if(!e)return;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),4000)}
-
 function sts(s){return{aberto:'Pendente',em_descarga:'Em descarga',descarregado:'Descarregado',despolpado:'Despolpado',encerrado:'Encerrado'}[s]||s}
 function bge(s){return s==='encerrado'?'bg':s==='aberto'?'bp':'by'}
 
 // S0
-function calcC(){
-  const l=parseFloat(document.getElementById('cl').value)||0,p=parseFloat(document.getElementById('cp').value)||0
-  document.getElementById('ctotal').textContent=l&&p?'R$ '+(l*p).toLocaleString('pt-BR',{minimumFractionDigits:2}):'R$ —'
-}
-async function loadS0(){
-  try{
-    const d=await req('GET','/compras/resumo-dia?data='+HOJE),el=document.getElementById('lista0')
-    if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma ordem hoje.</div>';return}
-    el.innerHTML=d.itens.map(i=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_prevista} latas · ${fmtMoeda(i.preco_por_lata)}/lata</div></div><div style="text-align:right"><span class="badge ${bge(i.lote_status)}">${sts(i.lote_status)}</span><div class="mn tm" style="margin-top:5px">${fmtMoeda(i.total_estimado)}</div></div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total do dia</span><span class="mn fw7 tg" style="font-size:15px">${fmtMoeda(d.total_estimado)}</span></div>`
-  }catch(e){document.getElementById('lista0').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-async function regCompra(){
-  const btn=document.getElementById('bc0'),fid=document.getElementById('cf').value
-  const latas=document.getElementById('cl').value,preco=document.getElementById('cp').value
-  if(!fid||!latas||!preco){alert('Preencha fornecedor, quantidade e preço.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{
-    const lote=await req('POST','/lotes',{fornecedor_id:parseInt(fid),data_operacao:HOJE})
-    await req('POST','/compras',{lote_id:lote.id,fornecedor_id:parseInt(fid),qtd_latas_prevista:parseInt(latas),preco_por_lata:parseFloat(preco),data_entrega_prev:document.getElementById('cd').value||HOJE,condicao_acordada:document.getElementById('cc').value})
-    ok('ok0');loadS0();carregaLotes()
-  }catch(e){alert('Erro: '+e.message)}
-  finally{btn.classList.remove('loading');btn.disabled=false}
-}
+function calcC(){const l=parseFloat(document.getElementById('cl').value)||0,p=parseFloat(document.getElementById('cp').value)||0;document.getElementById('ctotal').textContent=l&&p?'R$ '+(l*p).toLocaleString('pt-BR',{minimumFractionDigits:2}):'R$ —'}
+async function loadS0(){try{const d=await req('GET','/compras/resumo-dia?data='+HOJE),el=document.getElementById('lista0');if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma ordem hoje.</div>';return}el.innerHTML=d.itens.map(i=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_prevista} latas · ${fmtMoeda(i.preco_por_lata)}/lata</div></div><div style="text-align:right"><span class="badge ${bge(i.lote_status)}">${sts(i.lote_status)}</span><div class="mn tm" style="margin-top:5px">${fmtMoeda(i.total_estimado)}</div></div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total do dia</span><span class="mn fw7 tg" style="font-size:15px">${fmtMoeda(d.total_estimado)}</span></div>`}catch(e){document.getElementById('lista0').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function regCompra(){const btn=document.getElementById('bc0'),fid=document.getElementById('cf').value,latas=document.getElementById('cl').value,preco=document.getElementById('cp').value;if(!fid||!latas||!preco){alert('Preencha fornecedor, quantidade e preço.');return}btn.classList.add('loading');btn.disabled=true;try{const lote=await req('POST','/lotes',{fornecedor_id:parseInt(fid),data_operacao:HOJE});await req('POST','/compras',{lote_id:lote.id,fornecedor_id:parseInt(fid),qtd_latas_prevista:parseInt(latas),preco_por_lata:parseFloat(preco),data_entrega_prev:document.getElementById('cd').value||HOJE,condicao_acordada:document.getElementById('cc').value});ok('ok0');loadS0();carregaLotes()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S1
-function calcCarga1(){
-  const b=parseFloat(document.getElementById('b1bruto').value)||0,t=parseFloat(document.getElementById('b1tara').value)||0
-  document.getElementById('b1carga').textContent=(b&&t&&b>t)?(b-t).toLocaleString('pt-BR')+' kg':'— kg'
-}
-async function loadS1(){
-  await carregaLotes();fillSelect('b1lote',['aberto','em_descarga'])
-  try{
-    const d=await req('GET','/pesagens/comparativo?data='+HOJE),el=document.getElementById('lista1')
-    el.innerHTML='<div class="tl">'+d.map(l=>`<div class="tli"><div class="tld ${l.peso_bruto_kg?'tlg':'tlgr'}"></div><div class="fw7" style="margin-bottom:4px">${l.fornecedor}</div><div class="tm" style="font-size:12px">${l.peso_bruto_kg?Number(l.peso_bruto_kg).toLocaleString('pt-BR')+' kg brutos':'Aguardando'}</div><span class="badge ${l.peso_bruto_kg?'bg':'bgr'}" style="margin-top:6px">${l.peso_bruto_kg?'Pesado ✓':'Na fila'}</span></div>`).join('')+'</div>'
-    if(!d.length)el.innerHTML='<div class="ls">Sem veículos registrados.</div>'
-  }catch(e){document.getElementById('lista1').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-function selLote1(){}
-async function regChegada(){
-  const btn=document.getElementById('bc1'),lid=document.getElementById('b1lote').value,pb=document.getElementById('b1bruto').value
-  if(!lid||!pb){alert('Selecione o lote e informe o peso bruto.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{
-    await req('POST','/pesagens/chegada',{lote_id:lid,placa_veiculo:document.getElementById('b1placa').value,peso_bruto_kg:parseFloat(pb),tara_kg:parseFloat(document.getElementById('b1tara').value)||null})
-    ok('ok1');loadS1()
-  }catch(e){alert('Erro: '+e.message)}
-  finally{btn.classList.remove('loading');btn.disabled=false}
-}
+function calcCarga1(){const b=parseFloat(document.getElementById('b1bruto').value)||0,t=parseFloat(document.getElementById('b1tara').value)||0;document.getElementById('b1carga').textContent=(b&&t&&b>t)?(b-t).toLocaleString('pt-BR')+' kg':'— kg'}
+async function loadS1(){await carregaLotes();fillSelect('b1lote',['aberto','em_descarga']);try{const d=await req('GET','/pesagens/comparativo?data='+HOJE),el=document.getElementById('lista1');el.innerHTML='<div class="tl">'+d.map(l=>`<div class="tli"><div class="tld ${l.peso_bruto_kg?'tlg':'tlgr'}"></div><div class="fw7" style="margin-bottom:4px">${l.fornecedor}</div><div class="tm" style="font-size:12px">${l.peso_bruto_kg?Number(l.peso_bruto_kg).toLocaleString('pt-BR')+' kg brutos':'Aguardando'}</div><span class="badge ${l.peso_bruto_kg?'bg':'bgr'}" style="margin-top:6px">${l.peso_bruto_kg?'Pesado ✓':'Na fila'}</span></div>`).join('')+'</div>';if(!d.length)el.innerHTML='<div class="ls">Sem veículos.</div>'}catch(e){document.getElementById('lista1').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function regChegada(){const btn=document.getElementById('bc1'),lid=document.getElementById('b1lote').value,pb=document.getElementById('b1bruto').value;if(!lid||!pb){alert('Selecione o lote e informe o peso bruto.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/pesagens/chegada',{lote_id:lid,placa_veiculo:document.getElementById('b1placa').value,peso_bruto_kg:parseFloat(pb),tara_kg:parseFloat(document.getElementById('b1tara').value)||null});ok('ok1');loadS1()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S2
-function selLote2(){
-  const lid=document.getElementById('r2lote').value,l=getLote(lid)
-  if(l&&l.qtd_latas_prevista){
-    document.getElementById('r2prev').value=l.qtd_latas_prevista
-    const info=document.getElementById('r2info')
-    info.textContent='Compra: '+l.qtd_latas_prevista+' latas · R$ '+Number(l.preco_por_lata).toFixed(2)+'/lata'
-    info.style.display='block'
-  }
-}
-async function loadS2(){
-  await carregaLotes();fillSelect('r2lote',['em_descarga','aberto']);selLote2()
-  try{
-    const d=await req('GET','/recepcoes/resumo-dia?data='+HOJE),el=document.getElementById('lista2')
-    if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma recepção hoje.</div>';return}
-    el.innerHTML=d.itens.map(i=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_recebidas?i.qtd_latas_recebidas+' latas recebidas':'Aguardando'}</div></div><div>${i.qtd_latas_recebidas?'<span class="badge bg">Recebido ✓</span>':'<span class="badge bgr">Pendente</span>'}</div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total recebidas</span><span class="mn fw7">${d.total_recebidas||0} / ${d.total_previstas||0}</span></div><div class="pr"><div class="prf" style="width:${d.total_previstas?Math.round((d.total_recebidas/d.total_previstas)*100):0}%"></div></div>`
-  }catch(e){document.getElementById('lista2').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-async function regRecepcao(){
-  const btn=document.getElementById('bc2'),lid=document.getElementById('r2lote').value,latas=document.getElementById('r2latas').value
-  if(!lid||!latas){alert('Selecione o lote e informe a quantidade.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{
-    await req('POST','/recepcoes',{lote_id:lid,qtd_latas_recebidas:parseInt(latas),condicao_fruto:document.getElementById('r2cond').value,observacoes:document.getElementById('r2obs').value})
-    ok('ok2');loadS2()
-  }catch(e){alert('Erro: '+e.message)}
-  finally{btn.classList.remove('loading');btn.disabled=false}
-}
+function selLote2(){const lid=document.getElementById('r2lote').value,l=getLote(lid);if(l&&l.qtd_latas_prevista){document.getElementById('r2prev').value=l.qtd_latas_prevista;const info=document.getElementById('r2info');info.textContent='Compra: '+l.qtd_latas_prevista+' latas · R$ '+Number(l.preco_por_lata).toFixed(2)+'/lata';info.style.display='block'}}
+async function loadS2(){await carregaLotes();fillSelect('r2lote',['em_descarga','aberto']);selLote2();try{const d=await req('GET','/recepcoes/resumo-dia?data='+HOJE),el=document.getElementById('lista2');if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma recepção hoje.</div>';return}el.innerHTML=d.itens.map(i=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_recebidas?i.qtd_latas_recebidas+' latas recebidas':'Aguardando'}</div></div><div>${i.qtd_latas_recebidas?'<span class="badge bg">Recebido ✓</span>':'<span class="badge bgr">Pendente</span>'}</div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total recebidas</span><span class="mn fw7">${d.total_recebidas||0} / ${d.total_previstas||0}</span></div><div class="pr"><div class="prf" style="width:${d.total_previstas?Math.round((d.total_recebidas/d.total_previstas)*100):0}%"></div></div>`}catch(e){document.getElementById('lista2').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function regRecepcao(){const btn=document.getElementById('bc2'),lid=document.getElementById('r2lote').value,latas=document.getElementById('r2latas').value;if(!lid||!latas){alert('Selecione o lote e informe a quantidade.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/recepcoes',{lote_id:lid,qtd_latas_recebidas:parseInt(latas),condicao_fruto:document.getElementById('r2cond').value,observacoes:document.getElementById('r2obs').value});ok('ok2');loadS2()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S3
-function selLote3(){
-  const lid=document.getElementById('b3lote').value,l=getLote(lid),row=document.getElementById('b3brutorow')
-  if(l&&l.peso_bruto_kg){document.getElementById('b3bruto').textContent=Number(l.peso_bruto_kg).toLocaleString('pt-BR')+' kg';row.style.display='flex'}
-  else row.style.display='none'
-  calcLiq3()
-}
-function calcLiq3(){
-  const lid=document.getElementById('b3lote').value,l=getLote(lid)
-  const s=parseFloat(document.getElementById('b3saida').value)||0,b=l?Number(l.peso_bruto_kg):0
-  document.getElementById('b3liq').textContent=(s&&b&&b>s)?(b-s).toLocaleString('pt-BR')+' kg':'— kg'
-}
-async function loadS3(){
-  await carregaLotes();fillSelect('b3lote',['em_descarga','descarregado']);selLote3()
-  try{
-    const d=await req('GET','/pesagens/comparativo?data='+HOJE),el=document.getElementById('lista3')
-    el.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Saída</th><th>Líquido</th></tr></thead><tbody>'+d.map(r=>`<tr><td><strong>${r.fornecedor}</strong></td><td class="mn">${r.peso_bruto_kg?Number(r.peso_bruto_kg).toLocaleString('pt-BR'):'—'}</td><td class="mn">${r.peso_saida_kg?Number(r.peso_saida_kg).toLocaleString('pt-BR'):'—'}</td><td class="mn fw7 ${r.peso_liquido_kg?'tg':'tm'}">${r.peso_liquido_kg?Number(r.peso_liquido_kg).toLocaleString('pt-BR'):'—'}</td></tr>`).join('')+'</tbody></table></div>'
-    if(!d.length)el.innerHTML='<div class="ls">Sem dados.</div>'
-  }catch(e){document.getElementById('lista3').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-async function regSaida(){
-  const btn=document.getElementById('bc3'),lid=document.getElementById('b3lote').value,ps=document.getElementById('b3saida').value
-  if(!lid||!ps){alert('Selecione o lote e informe o peso de saída.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{await req('POST','/pesagens/saida',{lote_id:lid,peso_saida_kg:parseFloat(ps)});ok('ok3');loadS3()}
-  catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}
-}
+function selLote3(){const lid=document.getElementById('b3lote').value,l=getLote(lid),row=document.getElementById('b3brutorow');if(l&&l.peso_bruto_kg){document.getElementById('b3bruto').textContent=Number(l.peso_bruto_kg).toLocaleString('pt-BR')+' kg';row.style.display='flex'}else row.style.display='none';calcLiq3()}
+function calcLiq3(){const lid=document.getElementById('b3lote').value,l=getLote(lid);const s=parseFloat(document.getElementById('b3saida').value)||0,b=l?Number(l.peso_bruto_kg):0;document.getElementById('b3liq').textContent=(s&&b&&b>s)?(b-s).toLocaleString('pt-BR')+' kg':'— kg'}
+async function loadS3(){await carregaLotes();fillSelect('b3lote',['em_descarga','descarregado']);selLote3();try{const d=await req('GET','/pesagens/comparativo?data='+HOJE),el=document.getElementById('lista3');el.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Saída</th><th>Líquido</th></tr></thead><tbody>'+d.map(r=>`<tr><td><strong>${r.fornecedor}</strong></td><td class="mn">${r.peso_bruto_kg?Number(r.peso_bruto_kg).toLocaleString('pt-BR'):'—'}</td><td class="mn">${r.peso_saida_kg?Number(r.peso_saida_kg).toLocaleString('pt-BR'):'—'}</td><td class="mn fw7 ${r.peso_liquido_kg?'tg':'tm'}">${r.peso_liquido_kg?Number(r.peso_liquido_kg).toLocaleString('pt-BR'):'—'}</td></tr>`).join('')+'</tbody></table></div>';if(!d.length)el.innerHTML='<div class="ls">Sem dados.</div>'}catch(e){document.getElementById('lista3').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function regSaida(){const btn=document.getElementById('bc3'),lid=document.getElementById('b3lote').value,ps=document.getElementById('b3saida').value;if(!lid||!ps){alert('Selecione o lote e informe o peso de saída.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/pesagens/saida',{lote_id:lid,peso_saida_kg:parseFloat(ps)});ok('ok3');loadS3()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S4
 function selLote4(){const lid=document.getElementById('d4lote').value,l=getLote(lid);if(l&&l.qtd_latas_recebidas)document.getElementById('d4latas').value=l.qtd_latas_recebidas}
-function calcD4(){
-  const l=parseFloat(document.getElementById('d4latas').value)||0,lt=parseFloat(document.getElementById('d4litros').value)||0
-  document.getElementById('d4rend').textContent=(l&&lt)?(lt/l).toFixed(1)+' L/lata':'—'
-}
-async function loadS4(){
-  await carregaLotes();fillSelect('d4lote',['descarregado','despolpado']);selLote4()
-  try{
-    const d=await req('GET','/producao/historico?limite=5'),el=document.getElementById('lista4')
-    el.innerHTML=d.length?d.map(r=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor} — ${new Date(r.data_operacao).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div><div class="tm" style="font-size:12px">${r.latas_processadas} latas</div></div><div style="text-align:right"><div class="mn fw7 ${Number(r.rendimento_l_lata)>=8?'tg':'ty'}">${Number(r.rendimento_l_lata).toFixed(1)} L/lata</div><div class="tm" style="font-size:11px">${Number(r.litros_extraidos).toLocaleString('pt-BR')} L</div></div></div>`).join(''):'<div class="ls">Sem histórico.</div>'
-  }catch(e){document.getElementById('lista4').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-async function regDesp(){
-  const btn=document.getElementById('bc4'),lid=document.getElementById('d4lote').value
-  const latas=document.getElementById('d4latas').value,litros=document.getElementById('d4litros').value
-  if(!lid||!latas||!litros){alert('Preencha todos os campos.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{await req('POST','/producao/despolpamento',{lote_id:lid,latas_processadas:parseInt(latas),litros_extraidos:parseFloat(litros),turno:document.getElementById('d4turno').value,operador_nome:document.getElementById('d4op').value});ok('ok4');loadS4()}
-  catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}
-}
+function calcD4(){const l=parseFloat(document.getElementById('d4latas').value)||0,lt=parseFloat(document.getElementById('d4litros').value)||0;document.getElementById('d4rend').textContent=(l&&lt)?(lt/l).toFixed(1)+' L/lata':'—'}
+async function loadS4(){await carregaLotes();fillSelect('d4lote',['descarregado','despolpado']);selLote4();try{const d=await req('GET','/producao/historico?limite=5'),el=document.getElementById('lista4');el.innerHTML=d.length?d.map(r=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor} — ${new Date(r.data_operacao).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div><div class="tm" style="font-size:12px">${r.latas_processadas} latas</div></div><div style="text-align:right"><div class="mn fw7 ${Number(r.rendimento_l_lata)>=8?'tg':'ty'}">${Number(r.rendimento_l_lata).toFixed(1)} L/lata</div><div class="tm" style="font-size:11px">${Number(r.litros_extraidos).toLocaleString('pt-BR')} L</div></div></div>`).join(''):'<div class="ls">Sem histórico.</div>'}catch(e){document.getElementById('lista4').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function regDesp(){const btn=document.getElementById('bc4'),lid=document.getElementById('d4lote').value,latas=document.getElementById('d4latas').value,litros=document.getElementById('d4litros').value;if(!lid||!latas||!litros){alert('Preencha todos os campos.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/producao/despolpamento',{lote_id:lid,latas_processadas:parseInt(latas),litros_extraidos:parseFloat(litros),turno:document.getElementById('d4turno').value,operador_nome:document.getElementById('d4op').value});ok('ok4');loadS4()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S5
-async function carregaDadosR5(){
-  const lid=document.getElementById('r5lote').value,l=getLote(lid),el=document.getElementById('r5dados')
-  if(!l){el.innerHTML='';return}
-  el.innerHTML=`<div class="sr"><span class="tm" style="font-size:12px">Preço da lata</span><span class="mn fw7">${fmtMoeda(l.preco_por_lata)}</span></div><div class="sr"><span class="tm" style="font-size:12px">Latas recebidas</span><span class="mn fw7">${l.qtd_latas_recebidas||'—'}</span></div><div class="sr"><span class="tm" style="font-size:12px">Litros extraídos</span><span class="mn fw7">${l.litros_extraidos||'—'} L</span></div><div class="sr"><span class="tm" style="font-size:12px">Rendimento</span><span class="mn fw7 tp">${l.rendimento_l_lata?Number(l.rendimento_l_lata).toFixed(1)+' L/lata':'—'}</span></div><div class="sr sr-g"><span class="fw7 tg">Custo por litro</span><span class="mn fw7 tg" style="font-size:18px">${l.custo_por_litro?'R$ '+Number(l.custo_por_litro).toFixed(4)+'/L':'Calcular...'}</span></div>`
-}
-async function loadS5(){
-  await carregaLotes();fillSelect('r5lote',['despolpado']);carregaDadosR5()
-  try{
-    const d=await req('GET','/producao/comparativo-dia?data='+HOJE),el=document.getElementById('lista5')
-    el.innerHTML=d.length?d.map((r,i)=>`<div class="sr ${i===0?'sr-g':''}"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor}</div><div class="tm" style="font-size:12px">${Number(r.rendimento_l_lata).toFixed(1)} L/lata · ${fmtMoeda(r.preco_por_lata)}/lata</div></div><div style="text-align:right"><div class="mn fw7 tg">${fmtMoeda(r.custo_por_litro,4)}/L</div>${i===0?'<span class="badge bg" style="margin-top:4px">Melhor custo</span>':''}</div></div>`).join(''):'<div class="ls">Nenhum custo calculado ainda.</div>'
-  }catch(e){document.getElementById('lista5').innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-async function calcRend(){
-  const btn=document.getElementById('bc5'),lid=document.getElementById('r5lote').value
-  if(!lid){alert('Selecione um lote.');return}
-  btn.classList.add('loading');btn.disabled=true
-  try{await req('POST','/producao/rendimento',{lote_id:lid});ok('ok5');await carregaLotes();carregaDadosR5();loadS5()}
-  catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}
-}
+async function carregaDadosR5(){const lid=document.getElementById('r5lote').value,l=getLote(lid),el=document.getElementById('r5dados');if(!l){el.innerHTML='';return}el.innerHTML=`<div class="sr"><span class="tm" style="font-size:12px">Preço da lata</span><span class="mn fw7">${fmtMoeda(l.preco_por_lata)}</span></div><div class="sr"><span class="tm" style="font-size:12px">Latas recebidas</span><span class="mn fw7">${l.qtd_latas_recebidas||'—'}</span></div><div class="sr"><span class="tm" style="font-size:12px">Litros extraídos</span><span class="mn fw7">${l.litros_extraidos||'—'} L</span></div><div class="sr"><span class="tm" style="font-size:12px">Rendimento</span><span class="mn fw7 tp">${l.rendimento_l_lata?Number(l.rendimento_l_lata).toFixed(1)+' L/lata':'—'}</span></div><div class="sr sr-g"><span class="fw7 tg">Custo por litro</span><span class="mn fw7 tg" style="font-size:18px">${l.custo_por_litro?'R$ '+Number(l.custo_por_litro).toFixed(4)+'/L':'Calcular...'}</span></div>`}
+async function loadS5(){await carregaLotes();fillSelect('r5lote',['despolpado']);carregaDadosR5();try{const d=await req('GET','/producao/comparativo-dia?data='+HOJE),el=document.getElementById('lista5');el.innerHTML=d.length?d.map((r,i)=>`<div class="sr ${i===0?'sr-g':''}"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor}</div><div class="tm" style="font-size:12px">${Number(r.rendimento_l_lata).toFixed(1)} L/lata · ${fmtMoeda(r.preco_por_lata)}/lata</div></div><div style="text-align:right"><div class="mn fw7 tg">${fmtMoeda(r.custo_por_litro,4)}/L</div>${i===0?'<span class="badge bg" style="margin-top:4px">Melhor custo</span>':''}</div></div>`).join(''):'<div class="ls">Nenhum custo calculado ainda.</div>'}catch(e){document.getElementById('lista5').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function calcRend(){const btn=document.getElementById('bc5'),lid=document.getElementById('r5lote').value;if(!lid){alert('Selecione um lote.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/producao/rendimento',{lote_id:lid});ok('ok5');await carregaLotes();carregaDadosR5();loadS5()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S6
+function renderRelatorio(data,dia){
+  const r=data.resumo||{},itens=data.itens||[]
+  document.getElementById('m1').innerHTML=(r.total_latas||'—')+'<span> latas</span>'
+  document.getElementById('m2').innerHTML=(r.total_litros?Number(r.total_litros).toLocaleString('pt-BR'):'—')+'<span> L</span>'
+  document.getElementById('m3').innerHTML=(r.custo_medio_litro?fmtMoeda(r.custo_medio_litro):'—')+'<span>/L</span>'
+  document.getElementById('m4').innerHTML=r.total_valor_pago?fmtMoeda(r.total_valor_pago,0):'—'
+  document.getElementById('r6sub').textContent='Consolidado de '+dia
+  document.getElementById('bc6').style.display=data.status==='fechado'?'none':''
+  document.getElementById('r6title').textContent=data.status==='fechado'?'Relatório fechado — '+dia:'Relatório final'
+  if(!itens.length){document.getElementById('r6tab').innerHTML='<div class="ls">Nenhum dado nesta data.</div>';document.getElementById('r6anal').innerHTML='';return}
+  document.getElementById('r6tab').innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Latas</th><th>Preço/lata</th><th>Total</th><th>Litros</th><th>L/lata</th><th>Custo/L</th></tr></thead><tbody>${itens.map(i=>`<tr><td><strong>${i.fornecedor}</strong></td><td class="mn">${i.latas_recebidas}</td><td class="mn">${fmtMoeda(i.preco_por_lata)}</td><td class="mn">${fmtMoeda(i.total_pago)}</td><td class="mn">${Number(i.litros_extraidos).toLocaleString('pt-BR')}</td><td class="mn">${Number(i.rendimento_l_lata).toFixed(1)}</td><td class="mn fw7 tg">${fmtMoeda(i.custo_por_litro,4)}/L</td></tr>`).join('')}${r.custo_medio_litro?`<tr style="background:var(--green-light)"><td><strong class="tg">Média ponderada</strong></td><td class="mn fw7">${r.total_latas}</td><td class="mn tm">—</td><td class="mn fw7">${fmtMoeda(r.total_valor_pago)}</td><td class="mn fw7">${Number(r.total_litros).toLocaleString('pt-BR')}</td><td class="mn fw7 tg">${Number(r.rendimento_medio).toFixed(1)}</td><td class="mn fw7 tg" style="font-size:14px">${fmtMoeda(r.custo_medio_litro,4)}/L</td></tr>`:''}</tbody></table></div>`
+  if(itens.length){const mb=[...itens].sort((a,b)=>Number(a.custo_por_litro)-Number(b.custo_por_litro))[0];const mr=[...itens].sort((a,b)=>Number(b.rendimento_l_lata)-Number(a.rendimento_l_lata))[0];document.getElementById('r6anal').innerHTML=`<div class="ac acg"><div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-bottom:8px;text-transform:uppercase">Fórmula aplicada</div><div style="font-family:var(--mono);font-size:12px;color:var(--green-dark);line-height:2.1">Custo/L = Σ(preço×latas)<br>÷ Σ(litros totais)<br><span style="font-size:18px;font-weight:700">= ${fmtMoeda(r.custo_medio_litro,4)}/L</span></div></div><div class="ac acp"><div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase">Melhor custo/litro</div><div class="fw7" style="margin-bottom:4px">${mb.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--purple)">${fmtMoeda(mb.custo_por_litro,4)}/L</div></div><div class="ac acy"><div style="font-size:11px;font-weight:700;color:var(--yellow-dark);margin-bottom:8px;text-transform:uppercase">Maior rendimento</div><div class="fw7" style="margin-bottom:4px">${mr.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--yellow-dark)">${Number(mr.rendimento_l_lata).toFixed(1)} L/lata</div></div>`}
+}
 async function loadS6(){
   const dia=document.getElementById('r6data')?.value||HOJE
-  document.getElementById('bc6').style.display=''
-  try{
-    const data=await req('GET','/relatorios?data='+dia),r=data.resumo||{}
-    document.getElementById('m1').innerHTML=(r.total_latas||'—')+'<span> latas</span>'
-    document.getElementById('m2').innerHTML=(r.total_litros?Number(r.total_litros).toLocaleString('pt-BR'):'—')+'<span> L</span>'
-    document.getElementById('m3').innerHTML=(r.custo_medio_litro?fmtMoeda(r.custo_medio_litro):'—')+'<span>/L</span>'
-    document.getElementById('m4').innerHTML=r.total_valor_pago?fmtMoeda(r.total_valor_pago,0):'—'
-    document.getElementById('r6sub').textContent='Consolidado de '+dia
-    if(data.status==='fechado'){document.getElementById('r6title').textContent='Relatório fechado — '+dia;document.getElementById('bc6').style.display='none'}
-    else document.getElementById('r6title').textContent='Relatório final'
-    const itens=data.itens||[]
-    if(!itens.length){document.getElementById('r6tab').innerHTML='<div class="ls">Nenhum rendimento calculado nesta data.</div>';document.getElementById('r6anal').innerHTML='';return}
-    document.getElementById('r6tab').innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Latas</th><th>Preço/lata</th><th>Total</th><th>Litros</th><th>L/lata</th><th>Custo/L</th></tr></thead><tbody>${itens.map(i=>`<tr><td><strong>${i.fornecedor}</strong></td><td class="mn">${i.latas_recebidas}</td><td class="mn">${fmtMoeda(i.preco_por_lata)}</td><td class="mn">${fmtMoeda(i.total_pago)}</td><td class="mn">${Number(i.litros_extraidos).toLocaleString('pt-BR')}</td><td class="mn">${Number(i.rendimento_l_lata).toFixed(1)}</td><td class="mn fw7 tg">${fmtMoeda(i.custo_por_litro,4)}/L</td></tr>`).join('')}${r.custo_medio_litro?`<tr style="background:var(--green-light)"><td><strong class="tg">Média ponderada</strong></td><td class="mn fw7">${r.total_latas}</td><td class="mn tm">—</td><td class="mn fw7">${fmtMoeda(r.total_valor_pago)}</td><td class="mn fw7">${Number(r.total_litros).toLocaleString('pt-BR')}</td><td class="mn fw7 tg">${Number(r.rendimento_medio).toFixed(1)}</td><td class="mn fw7 tg" style="font-size:14px">${fmtMoeda(r.custo_medio_litro,4)}/L</td></tr>`:''}</tbody></table></div>`
-    if(itens.length){
-      const mb=[...itens].filter(x=>x.custo_por_litro&&x.custo_por_litro!=='***').sort((a,b)=>Number(a.custo_por_litro)-Number(b.custo_por_litro))[0]||itens[0]
-      const mr=[...itens].sort((a,b)=>Number(b.rendimento_l_lata)-Number(a.rendimento_l_lata))[0]
-      document.getElementById('r6anal').innerHTML=`<div class="ac acg"><div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-bottom:8px;text-transform:uppercase">Fórmula aplicada</div><div style="font-family:var(--mono);font-size:12px;color:var(--green-dark);line-height:2.1">Custo/L = Σ(preço×latas)<br>÷ Σ(litros totais)<br>= ${fmtMoeda(r.total_valor_pago)} ÷ ${Number(r.total_litros||0).toLocaleString('pt-BR')} L<br><span style="font-size:18px;font-weight:700">= ${fmtMoeda(r.custo_medio_litro,4)}/L</span></div></div><div class="ac acp"><div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase">Melhor custo/litro</div><div class="fw7" style="margin-bottom:4px">${mb.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--purple)">${fmtMoeda(mb.custo_por_litro,4)}/L</div></div><div class="ac acy"><div style="font-size:11px;font-weight:700;color:var(--yellow-dark);margin-bottom:8px;text-transform:uppercase">Maior rendimento</div><div class="fw7" style="margin-bottom:4px">${mr.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--yellow-dark)">${Number(mr.rendimento_l_lata).toFixed(1)} L/lata</div></div>`
-    }
-  }catch(e){document.getElementById('r6tab').innerHTML='<div class="ls">'+e.message+'</div>'}
+  try{const data=await req('GET','/relatorios?data='+dia);renderRelatorio(data,dia)}
+  catch(e){document.getElementById('r6tab').innerHTML='<div class="ls">'+e.message+'</div>'}
 }
 async function loadPeriodo(){
   const ini=document.getElementById('r6ini')?.value,fim=document.getElementById('r6fim')?.value||ini
-  const el=document.getElementById('r6periodo')
-  if(!ini){el.innerHTML='<div class="ls">Informe a data inicial.</div>';return}
-  el.innerHTML='<div class="ls">Carregando...</div>'
+  const el=document.getElementById('r6periodo');if(!ini){el.innerHTML='';return}
+  el.innerHTML='<div class="ls">Buscando...</div>'
   try{
-    const d=await req('GET','/relatorios/periodo?inicio='+ini+'&fim='+fim)
-    const r=d.resumo||{},rels=d.relatorios||[]
+    const d=await req('GET','/relatorios/historico?dias=90')
+    const rels=(Array.isArray(d)?d:[]).filter(x=>{const dt=x.data_operacao?.slice?.(0,10)||'';return dt>=ini&&dt<=(fim||ini)})
     if(!rels.length){el.innerHTML='<div class="ls">Nenhum dia fechado neste período.</div>';return}
-    el.innerHTML=`<div class="fb" style="margin-bottom:12px"><span>${rels.length} dia(s) fechado(s)</span><span class="mn fw7 tg">${fmtMoeda(r.total_valor_pago,0)} · ${fmtMoeda(r.custo_medio_litro,4)}/L médio</span></div><div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Latas</th><th>Litros</th><th>Investido</th><th>Custo/L</th><th>Melhor fornecedor</th></tr></thead><tbody>${rels.map(x=>`<tr><td class="mn">${x.data_operacao?.slice?.(0,10)||x.data_operacao}</td><td class="mn">${x.total_latas}</td><td class="mn">${Number(x.total_litros).toLocaleString('pt-BR')}</td><td class="mn">${fmtMoeda(x.total_valor_pago)}</td><td class="mn fw7 tg">${fmtMoeda(x.custo_medio_litro,4)}</td><td>${x.melhor_fornecedor_nome||'—'}</td></tr>`).join('')}</tbody></table></div>`
+    const totLatas=rels.reduce((s,x)=>s+Number(x.total_latas_recebidas||0),0)
+    const totLitros=rels.reduce((s,x)=>s+Number(x.total_litros_extraidos||0),0)
+    const totValor=rels.reduce((s,x)=>s+Number(x.total_valor_pago||0),0)
+    el.innerHTML=`<div class="fb" style="margin-bottom:12px"><span style="font-size:12px;color:var(--text3)">${rels.length} dia(s) fechado(s)</span><span class="mn fw7 tg">${fmtMoeda(totValor,0)} total</span></div><div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Latas</th><th>Litros</th><th>Investido</th><th>Custo/L</th></tr></thead><tbody>${rels.map(x=>`<tr><td class="mn">${x.data_operacao?.slice?.(0,10)||x.data_operacao}</td><td class="mn">${x.total_latas_recebidas||'—'}</td><td class="mn">${x.total_litros_extraidos?Number(x.total_litros_extraidos).toLocaleString('pt-BR'):'—'}</td><td class="mn">${fmtMoeda(x.total_valor_pago)}</td><td class="mn fw7 tg">${fmtMoeda(x.custo_medio_litro,4)}/L</td></tr>`).join('')}</tbody></table></div>`
   }catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}
 }
 async function fecharDia(){
   const dia=document.getElementById('r6data')?.value||HOJE
   if(!confirm('Fechar o dia de '+dia+'?'))return
   const btn=document.getElementById('bc6');btn.classList.add('loading');btn.disabled=true
-  try{await req('POST','/relatorios/fechar',{data:dia});loadS6()}
-  catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}
+  try{await req('POST','/relatorios/fechar',{data:dia});loadS6()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}
 }
 
 // S7
-async function loadS7(){
-  const el=document.getElementById('lista7');el.innerHTML='<div class="ls">Carregando...</div>'
-  try{
-    const d=await req('GET','/fornecedores')
-    el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th></tr></thead><tbody>${d.map(f=>`<tr><td><strong>${f.nome}</strong></td><td class="tm" style="font-size:12px">${f.municipio||'—'}, ${f.estado||'PA'}</td><td class="tm" style="font-size:12px">${f.contato_nome||'—'}</td><td class="mn">${f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—'}</td><td class="mn fw7 ${f.media_custo_litro?'tg':''}">${f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—'}</td><td class="mn">${f.total_lotes||0}</td><td><span class="badge ${f.ativo?'bg':'bgr'}">${f.ativo?'Ativo':'Inativo'}</span></td></tr>`).join('')}</tbody></table></div>`
-  }catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-function novoForn(){
-  const n=prompt('Nome do fornecedor:');if(!n)return
-  const m=prompt('Município:')||''
-  req('POST','/fornecedores',{nome:n,municipio:m}).then(()=>{carregaForns();loadS7()}).catch(e=>alert('Erro: '+e.message))
-}
+async function loadS7(){const el=document.getElementById('lista7');el.innerHTML='<div class="ls">Carregando...</div>';try{const d=await req('GET','/fornecedores');el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th></tr></thead><tbody>${d.map(f=>`<tr><td><strong>${f.nome}</strong></td><td class="tm" style="font-size:12px">${f.municipio||'—'}, ${f.estado||'PA'}</td><td class="tm" style="font-size:12px">${f.contato_nome||'—'}</td><td class="mn">${f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—'}</td><td class="mn fw7 ${f.media_custo_litro?'tg':''}">${f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—'}</td><td class="mn">${f.total_lotes||0}</td><td><span class="badge ${f.ativo?'bg':'bgr'}">${f.ativo?'Ativo':'Inativo'}</span></td></tr>`).join('')}</tbody></table></div>`}catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}}
+function novoForn(){const n=prompt('Nome do fornecedor:');if(!n)return;const m=prompt('Município:')||'';req('POST','/fornecedores',{nome:n,municipio:m}).then(()=>{carregaForns();loadS7()}).catch(e=>alert('Erro: '+e.message))}
 
-// S8 — Usuários (somente administrador autorizado)
-let PERFIS8=[]
-async function loadS8(){
-  if(!podeAdmin()){alert('Sem permissão.');return}
-  const el=document.getElementById('lista8')
-  el.innerHTML='<div class="ls">Carregando...</div>'
-  try{
-    if(!PERFIS8.length)PERFIS8=await req('GET','/auth/perfis')
-    const u=await req('GET','/auth/usuarios')
-    el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Valores</th><th>Admin</th><th>Status</th><th></th></tr></thead><tbody>${u.map(x=>`<tr><td><strong>${x.nome}</strong></td><td class="tm">${x.email}</td><td><span class="badge bg">${x.perfil}</span></td><td>${x.ocultar_valores?'Ocultos':'Visíveis'}</td><td>${x.pode_gerenciar_usuarios?'Sim':'Não'}</td><td><span class="badge ${x.ativo?'bg':'bgr'}">${x.ativo?'Ativo':'Inativo'}</span></td><td><button class="btn btn-w" style="padding:6px 10px;font-size:12px" onclick="editarUsuario('${x.id}')">Editar</button></td></tr>`).join('')}</tbody></table></div>`
-  }catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}
-}
-function novoUsuario(){
-  document.getElementById('u8id').value=''
-  document.getElementById('form8tit').textContent='Novo usuário'
-  document.getElementById('u8nome').value=''
-  document.getElementById('u8email').value=''
+// S8: USUÁRIOS
+async function loadS8(){if(!ehMaster()){alert('Sem permissão.');return}const el=document.getElementById('lista8');el.innerHTML='<div class="ls">Carregando...</div>';try{const d=await req('GET','/auth/usuarios');el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Último acesso</th><th>Status</th><th></th></tr></thead><tbody>${d.map(u=>`<tr><td><strong>${u.nome}</strong></td><td class="tm mn">${u.email}</td><td><span class="badge bp">${u.perfil}</span></td><td class="mn tm">${u.ultimo_acesso?new Date(u.ultimo_acesso).toLocaleDateString('pt-BR'):'Nunca'}</td><td><span class="badge ${u.ativo?'bg':'bgr'}">${u.ativo?'Ativo':'Inativo'}</span></td><td><button class="btn btn-gh" style="padding:5px 10px;font-size:12px" onclick='abrirFormUsuario(${JSON.stringify(u)})'>Editar</button></td></tr>`).join('')}</tbody></table></div>`}catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}}
+function abrirFormUsuario(u){
+  const f=document.getElementById('form8');f.style.display='block'
+  document.getElementById('form8tit').textContent=u?'Editar usuário':'Novo usuário'
+  document.getElementById('u8id').value=u?u.id:''
+  document.getElementById('u8nome').value=u?u.nome:''
+  document.getElementById('u8email').value=u?u.email:''
   document.getElementById('u8senha').value=''
-  document.getElementById('u8senha').placeholder='Senha inicial'
-  document.getElementById('u8ativo').checked=true
-  document.getElementById('u8ocultar').checked=false
-  document.getElementById('u8gerencia').checked=false
-  fillPerfilSelect()
-  document.getElementById('form8').style.display='block'
+  document.getElementById('u8ativo').checked=u?!!u.ativo:true
+  document.getElementById('u8ocultar').checked=u?!!u.ocultar_valores:false
+  const ps=document.getElementById('u8perfil')
+  const perfis=[{id:1,nome:'gerente'},{id:2,nome:'comprador'},{id:3,nome:'balanca'},{id:4,nome:'recepcao'},{id:5,nome:'producao'}]
+  ps.innerHTML=perfis.map(p=>`<option value="${p.id}" ${u&&u.perfil===p.nome?'selected':''}>${p.nome}</option>`).join('')
+  f.scrollIntoView({behavior:'smooth'})
 }
-async function editarUsuario(id){
-  try{
-    const u=(await req('GET','/auth/usuarios')).find(x=>x.id===id)
-    if(!u)return
-    document.getElementById('u8id').value=u.id
-    document.getElementById('form8tit').textContent='Editar usuário'
-    document.getElementById('u8nome').value=u.nome
-    document.getElementById('u8email').value=u.email
-    document.getElementById('u8senha').value=''
-    document.getElementById('u8senha').placeholder='Deixe em branco para manter'
-    document.getElementById('u8ativo').checked=!!u.ativo
-    document.getElementById('u8ocultar').checked=!!u.ocultar_valores
-    document.getElementById('u8gerencia').checked=!!u.pode_gerenciar_usuarios
-    await fillPerfilSelect(u.perfil_id)
-    document.getElementById('form8').style.display='block'
-  }catch(e){alert(e.message)}
-}
-async function fillPerfilSelect(perfilId){
-  if(!PERFIS8.length)PERFIS8=await req('GET','/auth/perfis')
-  const s=document.getElementById('u8perfil')
-  s.innerHTML=PERFIS8.map(p=>`<option value="${p.id}" ${perfilId==p.id?'selected':''}>${p.nome} — ${p.descricao||''}</option>`).join('')
-}
-function cancelarForm8(){document.getElementById('form8').style.display='none'}
 async function salvarUsuario(){
-  const id=document.getElementById('u8id').value
-  const body={
-    nome:document.getElementById('u8nome').value.trim(),
-    email:document.getElementById('u8email').value.trim(),
-    perfil_id:parseInt(document.getElementById('u8perfil').value),
-    ativo:document.getElementById('u8ativo').checked,
-    ocultar_valores:document.getElementById('u8ocultar').checked,
-    pode_gerenciar_usuarios:document.getElementById('u8gerencia').checked
-  }
-  const senha=document.getElementById('u8senha').value
-  if(senha)body.senha=senha
-  if(!body.nome||!body.email||!body.perfil_id){alert('Preencha nome, e-mail e perfil.');return}
-  if(!id&&!senha){alert('Informe a senha do novo usuário.');return}
+  const id=document.getElementById('u8id').value,nome=document.getElementById('u8nome').value,email=document.getElementById('u8email').value,senha=document.getElementById('u8senha').value
+  const perfil_id=parseInt(document.getElementById('u8perfil').value),ativo=document.getElementById('u8ativo').checked
+  const ocultar_valores=document.getElementById('u8ocultar').checked
+  if(!nome||!email){alert('Nome e e-mail são obrigatórios.');return}
+  if(!id&&!senha){alert('Informe a senha para o novo usuário.');return}
   try{
+    const body={nome,email,perfil_id,ativo,ocultar_valores}
+    if(senha)body.senha=senha
     if(id)await req('PUT','/auth/usuarios/'+id,body)
-    else await req('POST','/auth/usuarios',{...body,senha})
-    cancelarForm8();loadS8()
-    alert('Usuário salvo. Se alterou seu próprio acesso, faça login novamente.')
+    else await req('POST','/auth/usuarios',body)
+    document.getElementById('form8').style.display='none'
+    loadS8()
   }catch(e){alert('Erro: '+e.message)}
 }
+
+// S9: EDITAR DADOS
+async function loadS9(){await carregaLotesEdicao()}
+async function carregaLotesEdicao(){
+  const data=document.getElementById('e9data').value;if(!data)return
+  try{LOTES_ED=await req('GET','/lotes?data='+data);const sel=document.getElementById('e9lote');sel.innerHTML=LOTES_ED.length?LOTES_ED.map(l=>`<option value="${l.lote_id||l.id}">${l.codigo} — ${l.fornecedor}</option>`).join(''):'<option value="">Nenhum lote nesta data</option>';carregaCamposEdicao()}catch(e){}
+}
+function carregaCamposEdicao(){
+  const lid=document.getElementById('e9lote').value,mod=document.getElementById('e9modulo').value
+  const el=document.getElementById('e9campos'),sv=document.getElementById('e9salvar')
+  if(!lid){el.innerHTML='<div class="ls">Selecione um lote</div>';sv.style.display='none';return}
+  const lote=LOTES_ED.find(l=>(l.lote_id||l.id)===lid)
+  if(!lote){return}
+  sv.style.display='block'
+  document.getElementById('e9ok').style.display='none'
+  const campos={
+    compra:`<div class="fg"><label class="fl">Qtd. latas prevista</label><input class="fi" type="number" id="ed-latas" value="${lote.qtd_latas_prevista||''}"></div><div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="ed-preco" value="${lote.preco_por_lata||''}"></div>`,
+    chegada:`<div class="fg"><label class="fl">Peso bruto (kg)</label><input class="fi" type="number" id="ed-bruto" value="${lote.peso_bruto_kg||''}"></div><div class="fg"><label class="fl">Placa do veículo</label><input class="fi" type="text" id="ed-placa" value="${lote.placa_veiculo||''}"></div>`,
+    recepcao:`<div class="fg"><label class="fl">Latas recebidas</label><input class="fi" type="number" id="ed-recebidas" value="${lote.qtd_latas_recebidas||''}"></div><div class="fg"><label class="fl">Condição do fruto</label><select class="fi" id="ed-condicao"><option value="otima" ${lote.condicao_fruto==='otima'?'selected':''}>Ótima</option><option value="boa" ${lote.condicao_fruto==='boa'?'selected':''}>Boa</option><option value="regular" ${lote.condicao_fruto==='regular'?'selected':''}>Regular</option><option value="ruim" ${lote.condicao_fruto==='ruim'?'selected':''}>Ruim</option></select></div>`,
+    saida:`<div class="fg"><label class="fl">Peso de saída (kg)</label><input class="fi" type="number" id="ed-saida" value="${lote.peso_saida_kg||''}"></div>`,
+    despolpa:`<div class="fg"><label class="fl">Latas processadas</label><input class="fi" type="number" id="ed-dlatas" value="${lote.qtd_latas_recebidas||''}"></div><div class="fg"><label class="fl">Litros extraídos</label><input class="fi" type="number" id="ed-litros" value="${lote.litros_extraidos||''}"></div><div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="ed-op" value="${lote.operador_nome||''}"></div>`
+  }
+  el.innerHTML=campos[mod]||'<div class="ls">Selecione um módulo</div>'
+}
+async function salvarEdicao(){
+  const btn=document.querySelector('#e9salvar .btn')
+  const lid=document.getElementById('e9lote').value,mod=document.getElementById('e9modulo').value
+  btn.classList.add('loading');btn.disabled=true
+  try{
+    const rotas={compra:'/compras/',chegada:'/pesagens/chegada/',recepcao:'/recepcoes/',saida:'/pesagens/saida/',despolpa:'/producao/despolpamento/'}
+    const corpos={
+      compra:{qtd_latas_prevista:parseInt(document.getElementById('ed-latas').value),preco_por_lata:parseFloat(document.getElementById('ed-preco').value)},
+      chegada:{peso_bruto_kg:parseFloat(document.getElementById('ed-bruto').value),placa_veiculo:document.getElementById('ed-placa').value},
+      recepcao:{qtd_latas_recebidas:parseInt(document.getElementById('ed-recebidas').value),condicao_fruto:document.getElementById('ed-condicao').value},
+      saida:{peso_saida_kg:parseFloat(document.getElementById('ed-saida').value)},
+      despolpa:{latas_processadas:parseInt(document.getElementById('ed-dlatas').value),litros_extraidos:parseFloat(document.getElementById('ed-litros').value),operador_nome:document.getElementById('ed-op').value}
+    }
+    await req('PUT',rotas[mod]+lid,corpos[mod])
+    const ok=document.getElementById('e9ok');ok.style.display='block';setTimeout(()=>ok.style.display='none',4000)
+    await carregaLotes();carregaCamposEdicao()
+  }catch(e){alert('Erro: '+e.message)}
+  finally{btn.classList.remove('loading');btn.disabled=false}
+}
+
+// S10: HISTÓRICO
+function loadS10(){document.getElementById('h10resultado').innerHTML=''}
+async function carregarHistorico(){
+  const data=document.getElementById('h10data').value;if(!data){alert('Selecione uma data.');return}
+  const el=document.getElementById('h10resultado')
+  el.innerHTML='<div class="ls">Buscando...</div>'
+  try{
+    const d=await req('GET','/relatorios?data='+data)
+    const itens=d.itens||[],r=d.resumo||{}
+    const dataFmt=new Date(data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})
+    if(!itens.length){el.innerHTML=`<div class="card"><div class="ls">Nenhum dado registrado em ${dataFmt}.</div></div>`;return}
+    el.innerHTML=`<div class="g4">
+      <div class="met mg"><div class="met-label">Total latas</div><div class="met-val">${r.total_latas||'—'}<span> latas</span></div></div>
+      <div class="met mp"><div class="met-label">Total litros</div><div class="met-val">${r.total_litros?Number(r.total_litros).toLocaleString('pt-BR'):'—'}<span> L</span></div></div>
+      <div class="met my"><div class="met-label">Custo médio/L</div><div class="met-val">${r.custo_medio_litro?fmtMoeda(r.custo_medio_litro):'—'}<span>/L</span></div></div>
+      <div class="met mpl"><div class="met-label">Total investido</div><div class="met-val">${r.total_valor_pago?fmtMoeda(r.total_valor_pago,0):'—'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:3px">Relatório — ${dataFmt}</div>
+      <div style="font-size:12px;color:${d.status==='fechado'?'var(--green-dark)':'var(--yellow-dark)'};font-weight:700;margin-bottom:14px">${d.status==='fechado'?'● Dia encerrado':'● Dia em aberto'}</div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Latas</th><th>Preço/lata</th><th>Total</th><th>Litros</th><th>L/lata</th><th>Custo/L</th></tr></thead>
+      <tbody>${itens.map(i=>`<tr><td><strong>${i.fornecedor}</strong></td><td class="mn">${i.latas_recebidas}</td><td class="mn">${fmtMoeda(i.preco_por_lata)}</td><td class="mn">${fmtMoeda(i.total_pago)}</td><td class="mn">${Number(i.litros_extraidos).toLocaleString('pt-BR')}</td><td class="mn">${Number(i.rendimento_l_lata).toFixed(1)}</td><td class="mn fw7 tg">${fmtMoeda(i.custo_por_litro,4)}/L</td></tr>`).join('')}
+      ${r.custo_medio_litro?`<tr style="background:var(--green-light)"><td><strong class="tg">Média ponderada</strong></td><td class="mn fw7">${r.total_latas}</td><td class="mn tm">—</td><td class="mn fw7">${fmtMoeda(r.total_valor_pago)}</td><td class="mn fw7">${Number(r.total_litros).toLocaleString('pt-BR')}</td><td class="mn fw7 tg">${Number(r.rendimento_medio).toFixed(1)}</td><td class="mn fw7 tg">${fmtMoeda(r.custo_medio_litro,4)}/L</td></tr>`:''}</tbody></table></div>
+    </div>`
+  }catch(e){el.innerHTML=`<div class="card"><div class="ls">${e.message}</div></div>`}
+}
+function fecharEditModal(){document.getElementById('edit-modal').classList.remove('show')}
 </script>
 </body>
 </html>
