@@ -1,5 +1,6 @@
--- PASSO 0 — Rode PRIMEIRO para ver se o banco tem tabelas.
--- Se der ERRO "relation perfis does not exist", avise — precisa importar amazon_polpas_banco.sql
+-- PASSO 0 — Copie TUDO, Run. Deve aparecer 1 linha com números.
+-- Se der ERRO "does not exist" → rode PASSO-0B-CRIAR-TABELAS.sql primeiro.
 
-SELECT COUNT(*) AS total_perfis FROM perfis;
-SELECT COUNT(*) AS total_usuarios FROM usuarios;
+SELECT
+  (SELECT COUNT(*) FROM perfis)   AS total_perfis,
+  (SELECT COUNT(*) FROM usuarios) AS total_usuarios;

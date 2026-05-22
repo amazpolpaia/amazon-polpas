@@ -1,27 +1,24 @@
-POR QUE DEU "0 ROWS"?
-=====================
-Você colou só o FINAL do script (UPDATE e SELECT).
-Faltou o começo que CRIA os perfis e os usuários.
+ORDEM DOS ARQUIVOS (pasta sql\)
+================================
 
-COMO FAZER CERTO (3 arquivos pequenos)
-======================================
+0) PASSO-0-TESTE.sql
+   → Deve aparecer 1 LINHA com números (ex.: total_perfis 5, total_usuarios 0)
+   → Se der ERRO "does not exist" → vá para 0B
 
-ARQUIVO 1 — PASSO-0-TESTE.sql
-  Pasta: files\api_amazon_polpas\api\sql\
-  1. Abra no Bloco de Notas
-  2. Ctrl+A  Ctrl+C
-  3. Railway → Postgres → Query → apague tudo → Ctrl+V → Run
-  4. Se der ERRO "does not exist" → importe amazon_polpas_banco.sql inteiro primeiro
+0B) PASSO-0B-CRIAR-TABELAS.sql  (só se deu erro no 0)
+   → Deve aparecer: status = tabelas_ok
+   → Depois importe amazon_polpas_banco.sql INTEIRO para o resto do sistema
+     (arquivo: files\amazon_polpas_banco.sql — Ctrl+A, copiar, colar no Query, Run)
 
-ARQUIVO 2 — PASSO-1-PERFIS.sql
-  Mesmo processo. No final deve listar 5 perfis (gerente, comprador...).
+1) PASSO-1-PERFIS.sql
+   → Deve listar 5 perfis
 
-ARQUIVO 3 — PASSO-2-USUARIOS.sql
-  Mesmo processo. No final deve listar 2 emails (joao e igor).
+2) PASSO-2-USUARIOS.sql
+   → Deve listar 2 emails (joao e igor)
 
-LOGIN NO SITE (F5 antes)
-========================
-  igor.queiroz@amazonpolpas.com.br  /  Iqs563160
-  joao@amazonpolpas.com.br          /  Admin@2025
+LOGIN: igor.queiroz@amazonpolpas.com.br / Iqs563160
 
-NÃO digite o SQL na mão — sempre copie o arquivo inteiro.
+SE O PASSO 0 MOSTRA "0 ROWS" DE NOVO
+====================================
+Você não colou o arquivo novo. Abra PASSO-0-TESTE.sql de novo no Bloco de Notas,
+Ctrl+A, Ctrl+C, apague TUDO no Query, cole, Run.
