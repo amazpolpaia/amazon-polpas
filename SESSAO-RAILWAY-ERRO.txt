@@ -1,0 +1,21 @@
+ERRO "SESSION ERROR" NO RAILWAY
+===============================
+
+O que fazer:
+1. Feche a aba do Railway (ou F5 na página).
+2. Entre de novo no projeto → Postgres → Data ou Query.
+3. NÃO use PASSO-0B (criar tabelas) — seu banco JÁ TEM tabelas.
+4. Rode um arquivo POR VEZ (são curtos):
+
+   a) PASSO-1-SO-PERFIS.sql     → Run (pode não mostrar linhas; ok)
+   a2) PASSO-1B-COLUNAS.sql     → Run (se der erro de coluna no passo 2)
+   b) PASSO-2-SO-JOAO.sql       → Run
+   c) PASSO-2-SO-IGOR.sql       → Run
+   d) PASSO-3-CONFERE.sql       → TEM QUE mostrar 2 linhas
+
+5. Se der Session error de novo: espere 30 seg, F5, tente só o próximo arquivo.
+
+6. Login no site (F5):
+   igor.queiroz@amazonpolpas.com.br / Iqs563160
+
+Se PASSO-3 mostrar 0 linhas, mande print da aba Data → tabela usuarios.
