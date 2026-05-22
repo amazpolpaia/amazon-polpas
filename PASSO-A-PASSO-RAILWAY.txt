@@ -1,0 +1,65 @@
+AMAZON POLPAS — O QUE FALTA FAZER NO RAILWAY (só 1 vez)
+======================================================
+
+PARTE A — JÁ FEITO PELO COMPUTADOR (se o push deu certo)
+  O código novo foi enviado ao GitHub.
+  O Railway atualiza sozinho em 2-5 minutos.
+
+PARTE B — VOCÊ FAZ NO SITE RAILWAY (copiar e colar SQL)
+------------------------------------------------------
+
+1. Abra https://railway.app e entre na sua conta.
+
+2. Clique no projeto (ex.: zooming-blessing).
+
+3. Clique no quadrado POSTGRES (elefante / banco), NÃO no amazon-polpas.
+
+4. No topo, clique na aba "Data" ou "Query".
+
+5. Abra o arquivo neste PC:
+   App Compra de Fruto\files\api_amazon_polpas\api\sql\migrate-usuarios-admin.sql
+
+6. Selecione TUDO (Ctrl+A), copie (Ctrl+C).
+
+7. Cole na caixa de texto do Railway (Ctrl+V).
+
+8. Clique em Run / Execute / Play.
+
+9. Deve aparecer sucesso (ou "already exists" — pode ignorar).
+
+PARTE C — ENTRAR NO SISTEMA
+---------------------------
+
+1. No Railway, clique no quadrado AMAZON-POLPAS.
+
+2. Aba Settings → Networking → copie o link público
+   (ex.: https://amazon-polpas-production.up.railway.app)
+
+3. Abra esse link no navegador.
+
+4. Login:
+   E-mail: igor.queiroz@amazonpolpas.com.br
+   Senha:  (a senha que você definiu para o Igor)
+
+5. No menu lateral deve aparecer: "Usuários e acessos"
+
+6. Troque a senha do Igor depois (editar usuário).
+
+PARTE D — SE DER "ERRO INTERNO AO FAZER LOGIN"
+---------------------------------------------
+No Postgres → Query, execute também:
+  files\api_amazon_polpas\api\sql\fix-senhas-login.sql
+
+Depois tente:
+  igor.queiroz@amazonpolpas.com.br  (senha que você definiu)
+  ou joao@amazonpolpas.com.br / Admin@2025
+
+PROBLEMAS?
+----------
+- "Senha incorreta" → execute fix-senhas-login.sql (PARTE D).
+- "Erro interno" → PARTE D + confira no Railway (amazon-polpas → Variables)
+  se existem JWT_SECRET e DATABASE_URL.
+- Não aparece "Usuários" → espere o deploy (amazon-polpas → Deployments → Success)
+  e faça logout/login de novo.
+- Deploy falhou → em Settings do amazon-polpas, Root Directory =
+  files/api_amazon_polpas/api

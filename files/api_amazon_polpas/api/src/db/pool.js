@@ -2,9 +2,15 @@ const { Pool } = require('pg')
 
 function createPool() {
   if (process.env.DATABASE_URL) {
+    const url = process.env.DATABASE_URL
+    const precisaSsl =
+      process.env.PGSSL === 'true' ||
+      process.env.NODE_ENV === 'production' ||
+      /railway|rlwy|amazonaws|neon|supabase/i.test(url)
+
     return new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
+      connectionString: url,
+      ssl: precisaSsl ? { rejectUnauthorized: false } : false,
     })
   }
 

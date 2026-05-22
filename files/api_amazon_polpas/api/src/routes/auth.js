@@ -35,17 +35,36 @@ router.post('/login', async (req, res) => {
   if (!email || !senha)
     return res.status(400).json({ erro: 'E-mail e senha são obrigatórios.' })
 
+  if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET não configurado')
+    return res.status(500).json({ erro: 'Servidor sem JWT_SECRET. Configure nas variáveis do Railway.' })
+  }
+
   try {
-    const { rows } = await pool.query(
-      `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo,
-              COALESCE(u.ocultar_valores, FALSE) AS ocultar_valores,
-              COALESCE(u.pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
-              p.nome AS perfil
-       FROM usuarios u
-       JOIN perfis p ON p.id = u.perfil_id
-       WHERE u.email = $1`,
-      [email.toLowerCase()]
-    )
+    let rows
+    try {
+      ;({ rows } = await pool.query(
+        `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo,
+                COALESCE(u.ocultar_valores, FALSE) AS ocultar_valores,
+                COALESCE(u.pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
+                p.nome AS perfil
+         FROM usuarios u
+         JOIN perfis p ON p.id = u.perfil_id
+         WHERE u.email = $1`,
+        [email.toLowerCase()]
+      ))
+    } catch (dbErr) {
+      if (dbErr.code !== '42703') throw dbErr
+      ;({ rows } = await pool.query(
+        `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo,
+                FALSE AS ocultar_valores, FALSE AS pode_gerenciar_usuarios,
+                p.nome AS perfil
+         FROM usuarios u
+         JOIN perfis p ON p.id = u.perfil_id
+         WHERE u.email = $1`,
+        [email.toLowerCase()]
+      ))
+    }
 
     const usuario = rows[0]
     if (!usuario)
@@ -54,19 +73,26 @@ router.post('/login', async (req, res) => {
     if (!usuario.ativo)
       return res.status(403).json({ erro: 'Usuário inativo. Fale com o administrador.' })
 
-    const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash)
+    let senhaCorreta = false
+    try {
+      senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash || '')
+    } catch {
+      return res.status(401).json({
+        erro: 'Senha deste usuário precisa ser corrigida no banco. Execute sql/fix-senhas-login.sql no Postgres.',
+      })
+    }
     if (!senhaCorreta)
       return res.status(401).json({ erro: 'E-mail ou senha incorretos.' })
 
     await pool.query('UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = $1', [usuario.id])
 
     const token = jwt.sign(payloadToken(usuario), process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+      expiresIn: process.env.JWT_EXPIRES_IN || '12h',
     })
 
     res.json({ token, usuario: respostaUsuario(usuario) })
   } catch (err) {
-    console.error(err)
+    console.error('Erro login:', err.message)
     res.status(500).json({ erro: 'Erro interno ao fazer login.' })
   }
 })
