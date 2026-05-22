@@ -3,8 +3,9 @@
 --   joao@amazonpolpas.com.br     → Admin@2025
 --   igor.queiroz@amazonpolpas.com.br → Iqs563160
 
-UPDATE usuarios SET senha_hash = '$2a$10$5MNmw.3oe/os8q553bQ7V.MudahiHUVvfac7ixMS2padWY9WOS'
+-- Hashes gerados com bcrypt (compatíveis com a API)
+UPDATE usuarios SET senha_hash = '$2a$10$EmI6C/gQK8zUYRSDfIsoKu6fDO1O/uPXpsFMeUOnDwlrAgf55/lsK'
 WHERE email = 'joao@amazonpolpas.com.br';
 
-UPDATE usuarios SET senha_hash = '$2a$10$woCO4v5Loqr7LayNetX6NeJznzneC6lwi8IbXv66nhW7ipshU7OAS'
+UPDATE usuarios SET senha_hash = '$2a$10$6BKo8tMQouCDy3pCnUhQFeGWX5caNfGhtzCHvb4UOLVP5aU4Vj1/C'
 WHERE email = 'igor.queiroz@amazonpolpas.com.br';

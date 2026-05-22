@@ -9,7 +9,7 @@ INSERT INTO usuarios (nome, email, senha_hash, perfil_id, ativo, ocultar_valores
 SELECT
   'Igor Queiroz',
   'igor.queiroz@amazonpolpas.com.br',
-  '$2a$10$woCO4v5Loqr7LayNetX6NeJznzneC6lwi8IbXv66nhW7ipshU7OAS',
+  '$2a$10$6BKo8tMQouCDy3pCnUhQFeGWX5caNfGhtzCHvb4UOLVP5aU4Vj1/C',
   (SELECT id FROM perfis WHERE nome = 'gerente'),
   TRUE,
   FALSE,
