@@ -1,5 +1,5 @@
 const router = require('express').Router()
-const pool   = require('../db/pool')
+const pool = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
 const { respostaComValores } = require('../utils/valores')
 
@@ -29,7 +29,7 @@ router.get('/', autenticar, async (req, res) => {
 router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res) => {
   const {
     lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-    qtd_latas_prevista, preco_por_lata, condicao_acordada, observacoes
+    qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, observacoes
   } = req.body
 
   if (!lote_id || !fornecedor_id || !qtd_latas_prevista || !preco_por_lata)
@@ -38,15 +38,15 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
   try {
     const { rows } = await pool.query(
       `INSERT INTO compras
-         (lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-          qtd_latas_prevista, preco_por_lata, condicao_acordada, observacoes, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
+         qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, observacoes, registrado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
       [
         lote_id, fornecedor_id,
         data_negociacao || new Date().toISOString().split('T')[0],
         data_entrega_prev, qtd_latas_prevista, preco_por_lata,
-        condicao_acordada, observacoes, req.usuario.id
+        regiao, tipo_frete, valor_frete || 0, observacoes, req.usuario.id
       ]
     )
     res.status(201).json(rows[0])
@@ -67,6 +67,9 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
          c.qtd_latas_prevista,
          c.preco_por_lata,
          c.total_estimado,
+         c.regiao,
+         c.tipo_frete,
+         c.valor_frete,
          l.status AS lote_status
        FROM compras c
        JOIN fornecedores f ON f.id = c.fornecedor_id
@@ -75,7 +78,7 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
        ORDER BY c.criado_em`,
       [data]
     )
-    const total = rows.reduce((s, r) => s + Number(r.total_estimado), 0)
+    const total = rows.reduce((s, r) => s + Number(r.total_estimado) + Number(r.valor_frete || 0), 0)
     const latas = rows.reduce((s, r) => s + Number(r.qtd_latas_prevista), 0)
     respostaComValores(req, res, { itens: rows, total_estimado: total, total_latas: latas })
   } catch (err) {
