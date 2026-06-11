@@ -1,5 +1,5 @@
 const router = require('express').Router()
-const pool   = require('../db/pool')
+const pool = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
 const { respostaComValores } = require('../utils/valores')
 
@@ -20,9 +20,13 @@ router.get('/', autenticar, async (req, res) => {
     if (fechado) {
       // Retorna o relatório fechado com seus itens
       const { rows: itens } = await pool.query(
-        `SELECT ri.*, f.nome AS fornecedor
+        `SELECT ri.*, f.nome AS fornecedor,
+                ps.peso_liquido_kg,
+                c.tipo_frete, c.valor_frete, c.regiao
          FROM relatorio_itens ri
          JOIN fornecedores f ON f.id = ri.fornecedor_id
+         LEFT JOIN pesagens_saida ps ON ps.lote_id = ri.lote_id
+         LEFT JOIN compras c ON c.lote_id = ri.lote_id
          WHERE ri.relatorio_id=$1
          ORDER BY ri.custo_por_litro ASC`,
         [fechado.id]
@@ -35,35 +39,40 @@ router.get('/', autenticar, async (req, res) => {
       `SELECT
          f.nome AS fornecedor,
          rd.latas_recebidas, rd.preco_por_lata, rd.total_pago,
-         rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro
+         rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro,
+         ps.peso_liquido_kg,
+         c.tipo_frete, c.valor_frete, c.regiao
        FROM rendimentos rd
        JOIN fornecedores f ON f.id = rd.fornecedor_id
+       LEFT JOIN pesagens_saida ps ON ps.lote_id = rd.lote_id
+       LEFT JOIN compras c ON c.lote_id = rd.lote_id
        WHERE rd.data_operacao=$1
        ORDER BY rd.custo_por_litro ASC`,
       [data]
     )
 
     // Calcula média ponderada da prévia
-    const totalPago   = previa.reduce((s, r) => s + Number(r.total_pago || 0), 0)
+    const totalPago = previa.reduce((s, r) => s + Number(r.total_pago || 0), 0)
     const totalLitros = previa.reduce((s, r) => s + Number(r.litros_extraidos || 0), 0)
-    const totalLatas  = previa.reduce((s, r) => s + Number(r.latas_recebidas || 0), 0)
-    const custoMedio  = totalLitros > 0 ? (totalPago / totalLitros).toFixed(4) : null
-    const rendMedio   = totalLatas  > 0 ? (totalLitros / totalLatas).toFixed(4) : null
+    const totalLatas = previa.reduce((s, r) => s + Number(r.latas_recebidas || 0), 0)
+    const custoMedio = totalLitros > 0 ? (totalPago / totalLitros).toFixed(4) : null
+    const rendMedio = totalLatas > 0 ? (totalLitros / totalLatas).toFixed(4) : null
 
     respostaComValores(req, res, {
       status: 'aberto',
       data,
       resumo: {
-        qtd_fornecedores:      previa.length,
-        total_latas:           totalLatas,
-        total_litros:          totalLitros,
-        total_valor_pago:      totalPago.toFixed(2),
-        custo_medio_litro:     custoMedio,
-        rendimento_medio:      rendMedio,
+        qtd_fornecedores: previa.length,
+        total_latas: totalLatas,
+        total_litros: totalLitros,
+        total_valor_pago: totalPago.toFixed(2),
+        custo_medio_litro: custoMedio,
+        rendimento_medio: rendMedio,
       },
       itens: previa
     })
   } catch (err) {
+    console.error(err)
     res.status(500).json({ erro: 'Erro ao gerar relatório.' })
   }
 })
@@ -89,9 +98,13 @@ router.post('/fechar', autenticar, autorizar('gerente'), async (req, res) => {
     )
 
     const { rows: itens } = await pool.query(
-      `SELECT ri.*, f.nome AS fornecedor
+      `SELECT ri.*, f.nome AS fornecedor,
+              ps.peso_liquido_kg,
+              c.tipo_frete, c.valor_frete, c.regiao
        FROM relatorio_itens ri
        JOIN fornecedores f ON f.id = ri.fornecedor_id
+       LEFT JOIN pesagens_saida ps ON ps.lote_id = ri.lote_id
+       LEFT JOIN compras c ON c.lote_id = ri.lote_id
        WHERE ri.relatorio_id=$1
        ORDER BY ri.custo_por_litro ASC`,
       [relatorio_id]
