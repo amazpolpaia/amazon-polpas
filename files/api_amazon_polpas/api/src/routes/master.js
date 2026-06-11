@@ -1,6 +1,6 @@
-const router  = require('express').Router()
-const pool    = require('../db/pool')
-const bcrypt  = require('bcryptjs')
+const router = require('express').Router()
+const pool = require('../db/pool')
+const bcrypt = require('bcryptjs')
 const { autenticar, autorizar } = require('../middleware/auth')
 
 // PUT /auth/usuarios/:id
@@ -27,11 +27,11 @@ router.put('/usuarios/:id', autenticar, autorizar('gerente'), async (req, res) =
 
 // PUT /compras/:lote_id
 router.put('/compras/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
-  const { qtd_latas_prevista, preco_por_lata, condicao_acordada, observacoes } = req.body
+  const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, observacoes } = req.body
   try {
     const { rows } = await pool.query(
-      `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, condicao_acordada=$3, observacoes=$4 WHERE lote_id=$5 RETURNING *`,
-      [qtd_latas_prevista, preco_por_lata, condicao_acordada, observacoes, req.params.lote_id]
+      `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, regiao=$3, tipo_frete=$4, valor_frete=$5, observacoes=$6 WHERE lote_id=$7 RETURNING *`,
+      [qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete || 0, observacoes, req.params.lote_id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Compra não encontrada.' })
     res.json(rows[0])
