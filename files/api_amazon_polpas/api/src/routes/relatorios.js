@@ -1,3 +1,4 @@
+// v2.1 - unidade_fabril
 const router = require('express').Router()
 const pool = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
