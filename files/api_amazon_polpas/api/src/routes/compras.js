@@ -29,7 +29,7 @@ router.get('/', autenticar, async (req, res) => {
 router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res) => {
   const {
     lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-    qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, observacoes
+    qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes
   } = req.body
 
   if (!lote_id || !fornecedor_id || !qtd_latas_prevista || !preco_por_lata)
@@ -39,14 +39,14 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
     const { rows } = await pool.query(
       `INSERT INTO compras
         (lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-         qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, observacoes, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes, registrado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [
         lote_id, fornecedor_id,
         data_negociacao || new Date().toISOString().split('T')[0],
         data_entrega_prev, qtd_latas_prevista, preco_por_lata,
-        regiao, tipo_frete, valor_frete || 0, observacoes, req.usuario.id
+        regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id
       ]
     )
     res.status(201).json(rows[0])
@@ -70,6 +70,7 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
          c.regiao,
          c.tipo_frete,
          c.valor_frete,
+         c.unidade_fabril,
          l.status AS lote_status
        FROM compras c
        JOIN fornecedores f ON f.id = c.fornecedor_id
