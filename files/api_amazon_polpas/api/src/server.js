@@ -12,6 +12,7 @@ const recepcoesRoutes    = require('./routes/recepcoes')
 const producaoRoutes     = require('./routes/producao')
 const relatoriosRoutes   = require('./routes/relatorios')
 const masterRoutes       = require('./routes/master')
+const financeiroRoutes   = require('./routes/financeiro')
 
 const app = express()
 const PORT = process.env.PORT || 3000
