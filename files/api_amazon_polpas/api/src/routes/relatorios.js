@@ -22,7 +22,7 @@ router.get('/', autenticar, async (req, res) => {
       const { rows: itens } = await pool.query(
         `SELECT ri.*, f.nome AS fornecedor,
                 ps.peso_liquido_kg,
-                c.tipo_frete, c.valor_frete, c.regiao
+                c.tipo_frete, c.valor_frete, c.regiao, c.unidade_fabril
          FROM relatorio_itens ri
          JOIN fornecedores f ON f.id = ri.fornecedor_id
          LEFT JOIN pesagens_saida ps ON ps.lote_id = ri.lote_id
@@ -41,7 +41,7 @@ router.get('/', autenticar, async (req, res) => {
          rd.latas_recebidas, rd.preco_por_lata, rd.total_pago,
          rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro,
          ps.peso_liquido_kg,
-         c.tipo_frete, c.valor_frete, c.regiao
+         c.tipo_frete, c.valor_frete, c.regiao, c.unidade_fabril
        FROM rendimentos rd
        JOIN fornecedores f ON f.id = rd.fornecedor_id
        LEFT JOIN pesagens_saida ps ON ps.lote_id = rd.lote_id
@@ -100,7 +100,7 @@ router.post('/fechar', autenticar, autorizar('gerente'), async (req, res) => {
     const { rows: itens } = await pool.query(
       `SELECT ri.*, f.nome AS fornecedor,
               ps.peso_liquido_kg,
-              c.tipo_frete, c.valor_frete, c.regiao
+              c.tipo_frete, c.valor_frete, c.regiao, c.unidade_fabril
        FROM relatorio_itens ri
        JOIN fornecedores f ON f.id = ri.fornecedor_id
        LEFT JOIN pesagens_saida ps ON ps.lote_id = ri.lote_id
