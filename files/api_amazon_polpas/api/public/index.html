@@ -853,5 +853,30 @@ function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').
   window.novoForn = function(){abrirEditForn(null)};
 })();
 </script>
+
+<script>
+// Definitive fix for selecionarLoteS0 - always uses DL fallback
+window.selecionarLoteS0=function(el,loteId,forn){
+  document.querySelectorAll('.s0-item').forEach(function(i){i.style.background='';i.style.outline=''});
+  el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';
+  window._s0Fornecedor=forn;
+  // Try loteId first, then search LOTES, then DL
+  var found=null;
+  if(loteId) found=loteId;
+  else {
+    var src=(window.LOTES&&window.LOTES.length?window.LOTES:[]).concat(window.DL||[]);
+    var lobj=src.find(function(x){return x.fornecedor===forn||x.nome===forn});
+    if(lobj) found=lobj.lote_id||lobj.id;
+  }
+  // If still not found, search DL directly
+  if(!found&&window.DL){
+    var d=window.DL.find(function(x){return x.fornecedor===forn});
+    if(d) found=d.lote_id||d.id;
+  }
+  window._s0LoteId=found||null;
+  var si=document.getElementById('s0-sel-info');
+  if(si)si.textContent='Selecionado: '+forn+(found?' ✓':' (aguardando carregamento)');
+};
+</script>
 </body>
 </html>
