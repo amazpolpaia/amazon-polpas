@@ -834,7 +834,7 @@ async function salvarFornecedor(){var nome=document.getElementById('ef-nome').va
 async function excluirFornecedor(){if(!_fornAtual)return;if(_fornAtual.total_lotes>0){alert('Fornecedor possui '+_fornAtual.total_lotes+' lote(s) e nao pode ser excluido. Cancele os lotes primeiro.');return}if(!confirm('Excluir permanentemente "'+_fornAtual.nome+'"?'))return;try{await req('DELETE','/fornecedores/'+_fornAtual.id);document.getElementById('modal-edit-forn').classList.remove('show');carregaForns();loadS7();alert('Fornecedor excluido.')}catch(e){alert('Erro: '+e.message)}}
 
 
-function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').forEach(i=>{i.style.background='';i.style.outline=''});el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';window._s0LoteId=loteId;window._s0Fornecedor=forn;var si=document.getElementById('s0-sel-info');if(si)si.textContent='Selecionado: '+forn}
+function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').forEach(i=>{i.style.background='';i.style.outline=''});el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';window._s0Fornecedor=forn;var l=LOTES&&LOTES.find(function(x){return x.fornecedor===forn});window._s0LoteId=loteId||(l&&(l.lote_id||l.id))||null;var si=document.getElementById('s0-sel-info');if(si)si.textContent='Selecionado: '+forn+(window._s0LoteId?' ✓':'')}
 </script>
 
 <script>
