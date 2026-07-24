@@ -63,6 +63,8 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT
+         l.id AS lote_id,
+         l.codigo,
          f.nome AS fornecedor,
          c.qtd_latas_prevista,
          c.preco_por_lata,
