@@ -614,7 +614,7 @@ function fmtUnidade(v){return v?(UNIDADES[v]||v):'—'}
 function toggleUnidadeOutros(selId,inputId){const s=document.getElementById(selId),w=document.getElementById(selId+'-wrap');if(w)w.style.display=s.value==='outros'?'':'none'}
 function getUnidadeFabril(selId,inputId){const s=document.getElementById(selId);return s.value==='outros'?(document.getElementById(inputId).value||'outros'):s.value}
 function calcC(){const l=parseFloat(document.getElementById('cl').value)||0,p=parseFloat(document.getElementById('cp').value)||0,f=parseFloat(document.getElementById('cfrete-valor').value)||0;const tot=(l&&p)?(l*p)+f:0;document.getElementById('ctotal').textContent=tot?'R$ '+tot.toLocaleString('pt-BR',{minimumFractionDigits:2}):'R$ —'}
-async function loadS0(){try{const d=await req('GET','/compras/resumo-dia?data='+HOJE),el=document.getElementById('lista0');if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma ordem hoje.</div>';return}window._s0LoteId=null;el.innerHTML=d.itens.map(i=>`<div class="sr s0-item" data-lid="${i.lote_id||''}" style="cursor:pointer;border-radius:8px;padding:8px;transition:background .15s" onclick="selecionarLoteS0(this,'${i.lote_id||''}','${i.fornecedor||''}')"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_prevista} latas · ${fmtMoeda(i.preco_por_lata)}/lata</div></div><div style="text-align:right"><span class="badge ${bge(i.lote_status)}">${sts(i.lote_status)}</span><div class="mn tm" style="margin-top:5px">${fmtMoeda(i.total_estimado)}</div></div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total do dia</span><span class="mn fw7 tg" style="font-size:15px">${fmtMoeda(d.total_estimado)}</span></div>`}catch(e){document.getElementById('lista0').innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function loadS0(){try{const d=await req('GET','/compras/resumo-dia?data='+HOJE),el=document.getElementById('lista0');if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma ordem hoje.</div>';return}window._s0LoteId=null;el.innerHTML=d.itens.map(i=>`<div class="sr s0-item" data-lid="${i.lote_id||''}" style="cursor:pointer;border-radius:8px;padding:8px;transition:background .15s" onclick="selecionarLoteS0(this,'${i.lote_id||''}','${(i.fornecedor||'').replace(/'/g,'\\\'')}')"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_prevista} latas · ${fmtMoeda(i.preco_por_lata)}/lata</div></div><div style="text-align:right"><span class="badge ${bge(i.lote_status)}">${sts(i.lote_status)}</span><div class="mn tm" style="margin-top:5px">${fmtMoeda(i.total_estimado)}</div></div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total do dia</span><span class="mn fw7 tg" style="font-size:15px">${fmtMoeda(d.total_estimado)}</span></div>`}catch(e){document.getElementById('lista0').innerHTML='<div class="ls">'+e.message+'</div>'}}
 async function regCompra(){const btn=document.getElementById('bc0'),fid=document.getElementById('cf').value,latas=document.getElementById('cl').value,preco=document.getElementById('cp').value;if(!fid||!latas||!preco){alert('Preencha fornecedor, quantidade e preço.');return}btn.classList.add('loading');btn.disabled=true;try{const lote=await req('POST','/lotes',{fornecedor_id:parseInt(fid),data_operacao:HOJE});await req('POST','/compras',{lote_id:lote.id,fornecedor_id:parseInt(fid),qtd_latas_prevista:parseInt(latas),preco_por_lata:parseFloat(preco),data_entrega_prev:document.getElementById('cd').value||HOJE,regiao:document.getElementById('cc').value,tipo_frete:document.getElementById('cfrete-tipo').value,valor_frete:parseFloat(document.getElementById('cfrete-valor').value)||0,unidade_fabril:getUnidadeFabril('cunidade','cunidade-outros')});ok('ok0');loadS0();carregaLotes()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S1
@@ -855,18 +855,21 @@ function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').
 </script>
 
 <script>
-// Final fix for selecionarLoteS0 - uses DL const directly (not window.DL)
+// Final fix v3 - lote_id now comes directly from API resumo-dia
 window.selecionarLoteS0=function(el,loteId,forn){
   document.querySelectorAll('.s0-item').forEach(function(i){i.style.background='';i.style.outline=''});
   el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';
   window._s0Fornecedor=forn;
-  // DL is a const in the same scope, try to find lote by fornecedor name
-  var found=null;
-  try{
-    var allLotes=(LOTES&&LOTES.length?LOTES:DL)||[];
-    var lobj=allLotes.find(function(x){return x.fornecedor===forn||x.nome===forn});
-    if(lobj) found=lobj.lote_id||lobj.id;
-  }catch(e){}
+  // loteId comes directly from the API now (l.id AS lote_id in resumo-dia)
+  // Also try DL fallback for demo mode
+  var found=loteId||null;
+  if(!found){
+    try{
+      var src=(LOTES&&LOTES.length?LOTES:DL)||[];
+      var lobj=src.find(function(x){return x.fornecedor===forn||x.nome===forn});
+      if(lobj) found=lobj.lote_id||lobj.id;
+    }catch(e){}
+  }
   window._s0LoteId=found||null;
   var si=document.getElementById('s0-sel-info');
   if(si)si.textContent='Selecionado: '+forn+(found?' ✓':'');
