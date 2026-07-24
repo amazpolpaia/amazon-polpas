@@ -588,7 +588,7 @@ function aplicarPerms(){
 function logout(){localStorage.removeItem('token');localStorage.removeItem('usuario');location.reload()}
 
 const TITLES=['Compra de fruto','Balança — chegada','Recepção de fruto','Balança — saída','Despolpamento','Rendimento','Relatório final','Fornecedores','Usuários','Editar dados','Histórico']
-const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,loadS7,loadS8,loadS9,loadS10]
+const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,function(){return(window.loadS7||loadS7)()},loadS8,loadS9,loadS10]
 
 function go(n){
   const nav=document.getElementById('n'+n)
