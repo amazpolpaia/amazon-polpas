@@ -855,25 +855,24 @@ function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').
 </script>
 
 <script>
-// Final fix v3 - lote_id now comes directly from API resumo-dia
-window.selecionarLoteS0=function(el,loteId,forn){
-  document.querySelectorAll('.s0-item').forEach(function(i){i.style.background='';i.style.outline=''});
-  el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';
-  window._s0Fornecedor=forn;
-  // loteId comes directly from the API now (l.id AS lote_id in resumo-dia)
-  // Also try DL fallback for demo mode
-  var found=loteId||null;
-  if(!found){
-    try{
-      var src=(LOTES&&LOTES.length?LOTES:DL)||[];
-      var lobj=src.find(function(x){return x.fornecedor===forn||x.nome===forn});
-      if(lobj) found=lobj.lote_id||lobj.id;
-    }catch(e){}
-  }
-  window._s0LoteId=found||null;
-  var si=document.getElementById('s0-sel-info');
-  if(si)si.textContent='Selecionado: '+forn+(found?' ✓':'');
-};
+// Fix: loadS7 with manager edit buttons
+(function(){
+  window.loadS7 = async function(){
+    var el = document.getElementById('lista7');
+    el.innerHTML = '<div class="ls">Carregando...</div>';
+    try {
+      var d = await req('GET', '/fornecedores');
+      var mgr = ehMaster();
+      var rows = d.map(function(f){
+        var editBtn = mgr ? '<td><button class="btn btn-gh" style="padding:4px 10px;font-size:11px" onclick="abrirEditForn('+JSON.stringify(f)+')">✎ Editar</button></td>' : '';
+        return '<tr><td><strong>'+f.nome+'</strong></td><td class="tm" style="font-size:12px">'+(f.municipio||'—')+', '+(f.estado||'PA')+'</td><td class="tm" style="font-size:12px">'+(f.contato_nome||'—')+'</td><td class="mn">'+(f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—')+'</td><td class="mn fw7 '+(f.media_custo_litro?'tg':'')+'">'+( f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—')+'</td><td class="mn">'+(f.total_lotes||0)+'</td><td><span class="badge '+(f.ativo?'bg':'bgr')+'">'+(f.ativo?'Ativo':'Inativo')+'</span></td>'+editBtn+'</tr>';
+      }).join('');
+      var thAcoes = mgr ? '<th>Ações</th>' : '';
+      el.innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th>'+thAcoes+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    } catch(e) { el.innerHTML = '<div class="ls">'+e.message+'</div>'; }
+  };
+  window.novoForn = function(){ abrirEditForn(null); };
+})();
 </script>
 </body>
 </html>
