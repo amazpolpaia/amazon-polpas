@@ -855,27 +855,21 @@ function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').
 </script>
 
 <script>
-// Definitive fix for selecionarLoteS0 - always uses DL fallback
+// Final fix for selecionarLoteS0 - uses DL const directly (not window.DL)
 window.selecionarLoteS0=function(el,loteId,forn){
   document.querySelectorAll('.s0-item').forEach(function(i){i.style.background='';i.style.outline=''});
   el.style.background='var(--green-light)';el.style.outline='2px solid var(--green)';
   window._s0Fornecedor=forn;
-  // Try loteId first, then search LOTES, then DL
+  // DL is a const in the same scope, try to find lote by fornecedor name
   var found=null;
-  if(loteId) found=loteId;
-  else {
-    var src=(window.LOTES&&window.LOTES.length?window.LOTES:[]).concat(window.DL||[]);
-    var lobj=src.find(function(x){return x.fornecedor===forn||x.nome===forn});
+  try{
+    var allLotes=(LOTES&&LOTES.length?LOTES:DL)||[];
+    var lobj=allLotes.find(function(x){return x.fornecedor===forn||x.nome===forn});
     if(lobj) found=lobj.lote_id||lobj.id;
-  }
-  // If still not found, search DL directly
-  if(!found&&window.DL){
-    var d=window.DL.find(function(x){return x.fornecedor===forn});
-    if(d) found=d.lote_id||d.id;
-  }
+  }catch(e){}
   window._s0LoteId=found||null;
   var si=document.getElementById('s0-sel-info');
-  if(si)si.textContent='Selecionado: '+forn+(found?' ✓':' (aguardando carregamento)');
+  if(si)si.textContent='Selecionado: '+forn+(found?' ✓':'');
 };
 </script>
 </body>
