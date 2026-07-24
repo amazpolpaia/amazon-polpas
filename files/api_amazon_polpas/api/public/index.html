@@ -717,7 +717,7 @@ async function fecharDia(){
 }
 
 // S7
-async function loadS7(){const el=document.getElementById('lista7');el.innerHTML='<div class="ls">Carregando...</div>';try{const d=await req('GET','/fornecedores');el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th></tr></thead><tbody>${d.map(f=>`<tr><td><strong>${f.nome}</strong></td><td class="tm" style="font-size:12px">${f.municipio||'—'}, ${f.estado||'PA'}</td><td class="tm" style="font-size:12px">${f.contato_nome||'—'}</td><td class="mn">${f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—'}</td><td class="mn fw7 ${f.media_custo_litro?'tg':''}">${f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—'}</td><td class="mn">${f.total_lotes||0}</td><td><span class="badge ${f.ativo?'bg':'bgr'}">${f.ativo?'Ativo':'Inativo'}</span></td></tr>`).join('')}</tbody></table></div>`}catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}}
+async function loadS7(){const el=document.getElementById('lista7');el.innerHTML='<div class="ls">Carregando...</div>';try{const d=await req('GET','/fornecedores');el.innerHTML=`<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th>${isMgr?'<th>Ações</th>':''}</tr></thead><tbody>${d.map(f=>`<tr><td><strong>${f.nome}</strong></td><td class="tm" style="font-size:12px">${f.municipio||'—'}, ${f.estado||'PA'}</td><td class="tm" style="font-size:12px">${f.contato_nome||'—'}</td><td class="mn">${f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—'}</td><td class="mn fw7 ${f.media_custo_litro?'tg':''}">${f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—'}</td><td class="mn">${f.total_lotes||0}</td><td><span class="badge ${f.ativo?'bg':'bgr'}">${f.ativo?'Ativo':'Inativo'}</span></td></tr>`).join('')}</tbody></table></div>`}catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}}
 function novoForn(){const n=prompt('Nome do fornecedor:');if(!n)return;const m=prompt('Município:')||'';req('POST','/fornecedores',{nome:n,municipio:m}).then(()=>{carregaForns();loadS7()}).catch(e=>alert('Erro: '+e.message))}
 
 // S8: USUÁRIOS
@@ -833,6 +833,23 @@ function abrirEditForn(f){if(!ehMaster()){alert('Sem permissão.');return}_fornA
 async function salvarFornecedor(){var nome=document.getElementById('ef-nome').value.trim();if(!nome){alert('Informe o nome.');return}var body={nome:nome,municipio:document.getElementById('ef-municipio').value.trim(),estado:document.getElementById('ef-estado').value||'PA',contato_nome:document.getElementById('ef-contato-nome').value.trim(),telefone:document.getElementById('ef-telefone').value.trim(),ativo:document.getElementById('ef-ativo').value==='true'};try{var id=document.getElementById('ef-id').value;if(id)await req('PUT','/fornecedores/'+id,body);else await req('POST','/fornecedores',body);document.getElementById('modal-edit-forn').classList.remove('show');carregaForns();loadS7();alert(id?'Fornecedor atualizado!':'Fornecedor cadastrado!')}catch(e){alert('Erro: '+e.message)}}
 async function excluirFornecedor(){if(!_fornAtual)return;if(_fornAtual.total_lotes>0){alert('Fornecedor possui '+_fornAtual.total_lotes+' lote(s) e nao pode ser excluido. Cancele os lotes primeiro.');return}if(!confirm('Excluir permanentemente "'+_fornAtual.nome+'"?'))return;try{await req('DELETE','/fornecedores/'+_fornAtual.id);document.getElementById('modal-edit-forn').classList.remove('show');carregaForns();loadS7();alert('Fornecedor excluido.')}catch(e){alert('Erro: '+e.message)}}
 
+</script>
+
+<script>
+// Override loadS7 to add edit buttons for gerente
+(function(){
+  const _origLoadS7 = loadS7;
+  window.loadS7 = async function(){
+    const el=document.getElementById('lista7');
+    el.innerHTML='<div class="ls">Carregando...</div>';
+    try{
+      const d=await req('GET','/fornecedores');
+      const isMgr=ehMaster();
+      el.innerHTML='<div style="overflow-x:auto"><table><thead><tr><th>Fornecedor</th><th>Localização</th><th>Contato</th><th>Média L/lata</th><th>Custo médio/L</th><th>Lotes</th><th>Status</th>'+(isMgr?'<th>Ações</th>':'')+'</tr></thead><tbody>'+d.map(function(f){return '<tr><td><strong>'+f.nome+'</strong></td><td class="tm" style="font-size:12px">'+(f.municipio||'—')+', '+(f.estado||'PA')+'</td><td class="tm" style="font-size:12px">'+(f.contato_nome||'—')+'<br><span style="font-size:11px">'+(f.telefone||'')+'</span></td><td class="mn">'+(f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—')+'</td><td class="mn fw7 '+(f.media_custo_litro?'tg':'')+'">'+(f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—')+'</td><td class="mn">'+(f.total_lotes||0)+'</td><td><span class="badge '+(f.ativo?'bg':'bgr')+'">'+(f.ativo?'Ativo':'Inativo')+'</span></td>'+(isMgr?'<td><button class="btn btn-gh" style="padding:4px 10px;font-size:11px" onclick="abrirEditForn('+JSON.stringify(f)+')">✎ Editar</button></td>':'')+'</tr>'}).join('')+'</tbody></table></div>';
+    }catch(e){el.innerHTML='<div class="ls">'+e.message+'</div>'}
+  };
+  window.novoForn = function(){abrirEditForn(null)};
+})();
 </script>
 </body>
 </html>
