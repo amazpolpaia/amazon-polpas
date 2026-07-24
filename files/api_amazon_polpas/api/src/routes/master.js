@@ -104,4 +104,55 @@ router.put('/producao/despolpamento/:lote_id', autenticar, autorizar('gerente'),
   }
 })
 
+
+// DELETE /lotes/:id — remove lote e todos os registros vinculados
+router.delete('/lotes/:id', autenticar, autorizar('gerente'), async (req, res) => {
+  const { id } = req.params
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('DELETE FROM rendimentos WHERE lote_id=$1', [id])
+    await client.query('DELETE FROM despolpamentos WHERE lote_id=$1', [id])
+    await client.query('DELETE FROM pesagens_saida WHERE lote_id=$1', [id])
+    await client.query('DELETE FROM recepcoes WHERE lote_id=$1', [id])
+    await client.query('DELETE FROM pesagens_chegada WHERE lote_id=$1', [id])
+    await client.query('DELETE FROM compras WHERE lote_id=$1', [id])
+    const hasPagTab = await client.query("SELECT to_regclass('public.pagamentos_fornecedores')")
+    if(hasPagTab.rows[0].to_regclass) await client.query('DELETE FROM pagamentos_fornecedores WHERE lote_id=$1', [id])
+    const { rows } = await client.query('DELETE FROM lotes WHERE id=$1 RETURNING id', [id])
+    if (!rows[0]) { await client.query('ROLLBACK'); return res.status(404).json({ erro: 'Lote não encontrado.' }) }
+    await client.query('COMMIT')
+    res.json({ ok: true, id })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao cancelar lote.' })
+  } finally { client.release() }
+})
+
+// PUT /fornecedores/:id — atualizar dados do fornecedor
+router.put('/fornecedores/:id', autenticar, autorizar('gerente'), async (req, res) => {
+  const { nome, municipio, estado, contato_nome, telefone, ativo } = req.body
+  if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório.' })
+  try {
+    const { rows } = await pool.query(
+      'UPDATE fornecedores SET nome=$1, municipio=$2, estado=$3, contato_nome=$4, telefone=$5, ativo=$6 WHERE id=$7 RETURNING *',
+      [nome, municipio||null, estado||'PA', contato_nome||null, telefone||null, ativo!==false, req.params.id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Fornecedor não encontrado.' })
+    res.json(rows[0])
+  } catch (err) { res.status(500).json({ erro: 'Erro ao atualizar fornecedor.' }) }
+})
+
+// DELETE /fornecedores/:id — excluir fornecedor sem lotes
+router.delete('/fornecedores/:id', autenticar, autorizar('gerente'), async (req, res) => {
+  try {
+    const { rows: lotes } = await pool.query('SELECT id FROM lotes WHERE fornecedor_id=$1 LIMIT 1', [req.params.id])
+    if (lotes.length > 0) return res.status(409).json({ erro: 'Fornecedor possui lotes vinculados e não pode ser excluído.' })
+    const { rows } = await pool.query('DELETE FROM fornecedores WHERE id=$1 RETURNING id', [req.params.id])
+    if (!rows[0]) return res.status(404).json({ erro: 'Fornecedor não encontrado.' })
+    res.json({ ok: true })
+  } catch (err) { res.status(500).json({ erro: 'Erro ao excluir fornecedor.' }) }
+})
+
 module.exports = router
