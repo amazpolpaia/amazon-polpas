@@ -855,16 +855,18 @@ function selecionarLoteS0(el,loteId,forn){document.querySelectorAll('.s0-item').
 </script>
 
 <script>
-// Fix: loadS7 with manager edit buttons
+// Fix: loadS7 - uses data-index to avoid JSON-in-onclick issues
 (function(){
+  window.__fornList = [];
   window.loadS7 = async function(){
     var el = document.getElementById('lista7');
     el.innerHTML = '<div class="ls">Carregando...</div>';
     try {
       var d = await req('GET', '/fornecedores');
+      window.__fornList = d;
       var mgr = ehMaster();
-      var rows = d.map(function(f){
-        var editBtn = mgr ? '<td><button class="btn btn-gh" style="padding:4px 10px;font-size:11px" onclick="abrirEditForn('+JSON.stringify(f)+')">✎ Editar</button></td>' : '';
+      var rows = d.map(function(f, i){
+        var editBtn = mgr ? '<td><button class="btn btn-gh" style="padding:4px 10px;font-size:11px" onclick="abrirEditForn(window.__fornList['+i+'])">✎ Editar</button></td>' : '';
         return '<tr><td><strong>'+f.nome+'</strong></td><td class="tm" style="font-size:12px">'+(f.municipio||'—')+', '+(f.estado||'PA')+'</td><td class="tm" style="font-size:12px">'+(f.contato_nome||'—')+'</td><td class="mn">'+(f.media_rendimento?Number(f.media_rendimento).toFixed(1):'—')+'</td><td class="mn fw7 '+(f.media_custo_litro?'tg':'')+'">'+( f.media_custo_litro?fmtMoeda(f.media_custo_litro,4):'—')+'</td><td class="mn">'+(f.total_lotes||0)+'</td><td><span class="badge '+(f.ativo?'bg':'bgr')+'">'+(f.ativo?'Ativo':'Inativo')+'</span></td>'+editBtn+'</tr>';
       }).join('');
       var thAcoes = mgr ? '<th>Ações</th>' : '';
