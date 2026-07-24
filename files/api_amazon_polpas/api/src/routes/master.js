@@ -106,7 +106,7 @@ router.put('/producao/despolpamento/:lote_id', autenticar, autorizar('gerente'),
 
 
 // DELETE /lotes/:id — remove lote e todos os registros vinculados
-router.delete('/lotes/:id', autenticar, autorizar('gerente'), async (req, res) => {
+router.delete('/:id', autenticar, autorizar('gerente'), async (req, res) => {
   const { id } = req.params
   const client = await pool.connect()
   try {
@@ -131,7 +131,7 @@ router.delete('/lotes/:id', autenticar, autorizar('gerente'), async (req, res) =
 })
 
 // PUT /fornecedores/:id — atualizar dados do fornecedor
-router.put('/fornecedores/:id', autenticar, autorizar('gerente'), async (req, res) => {
+router.put('/:id', autenticar, autorizar('gerente'), async (req, res) => {
   const { nome, municipio, estado, contato_nome, telefone, ativo } = req.body
   if (!nome) return res.status(400).json({ erro: 'Nome é obrigatório.' })
   try {
@@ -145,7 +145,7 @@ router.put('/fornecedores/:id', autenticar, autorizar('gerente'), async (req, re
 })
 
 // DELETE /fornecedores/:id — excluir fornecedor sem lotes
-router.delete('/fornecedores/:id', autenticar, autorizar('gerente'), async (req, res) => {
+router.delete('/:id', autenticar, autorizar('gerente'), async (req, res) => {
   try {
     const { rows: lotes } = await pool.query('SELECT id FROM lotes WHERE fornecedor_id=$1 LIMIT 1', [req.params.id])
     if (lotes.length > 0) return res.status(409).json({ erro: 'Fornecedor possui lotes vinculados e não pode ser excluído.' })
