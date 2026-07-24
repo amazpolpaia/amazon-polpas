@@ -102,6 +102,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14
 .btn-p:hover:not(:disabled){background:var(--green-dark)}
 .btn-y{background:var(--yellow);color:#000}
 .btn-gh{background:transparent;color:var(--text2);border:1.5px solid var(--border)}
+.btn-red{background:var(--red-light);color:var(--red);border:1.5px solid #e5393533}
+.btn-red:hover:not(:disabled){background:#ffcdd2}
 .btn-w{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading::after{content:'';display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:6px;vertical-align:middle}
@@ -246,7 +248,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S0 -->
 <div class="screen active" id="s0">
-  <div class="section-header"><div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div><span class="badge bw" id="s0date"></span></div>
+  <div class="section-header"><div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div><div style="display:flex;align-items:center;gap:8px"><div id="s0-mgr-btns" style="display:none"><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4);font-size:12px;padding:6px 12px" onclick="abrirCancelLote('s0')">✕ Cancelar lote</button></div><span class="badge bw" id="s0date"></span></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Nova ordem de compra</div><div class="card-sub">Registrar lote negociado com fornecedor</div>
@@ -264,7 +266,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S1 -->
 <div class="screen" id="s1">
-  <div class="section-header sh-green"><div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div></div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div><div id="s1-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s1')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s1')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de chegada</div><div class="card-sub">Pesagem e horário de entrada</div>
@@ -282,7 +284,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S2 -->
 <div class="screen" id="s2">
-  <div class="section-header"><div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div></div>
+  <div class="section-header"><div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div><div id="s2-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s2')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s2')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Contagem de latas</div><div class="card-sub">Registro do descarregamento</div>
@@ -300,7 +302,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S3 -->
 <div class="screen" id="s3">
-  <div class="section-header sh-green"><div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div></div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div><div id="s3-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s3')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s3')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Pesagem pós-descarga</div><div class="card-sub">Cálculo do peso líquido</div>
@@ -317,7 +319,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S4 -->
 <div class="screen" id="s4">
-  <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div></div>
+  <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div><div id="s4-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s4')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s4')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de despolpamento</div><div class="card-sub">Litros extraídos por lote</div>
@@ -334,7 +336,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S5 -->
 <div class="screen" id="s5">
-  <div class="section-header"><div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div></div>
+  <div class="section-header"><div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div><div id="s5-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s5')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s5')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Calcular custo por litro</div><div class="card-sub">Consolida dados do lote automaticamente</div>
@@ -459,6 +461,34 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
   </div>
 </div>
+<!-- Modal: Cancelar Lote -->
+<div class="modal-bg" id="modal-cancel-lote">
+  <div class="modal" style="max-width:420px;border-top:4px solid var(--red)">
+    <div class="modal-title" style="color:var(--red)">⚠️ Cancelar lote</div>
+    <div class="modal-sub">Esta ação é irreversível.</div>
+    <div id="cancel-lote-info" style="background:var(--red-light);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;line-height:1.6"></div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Todos os registros serão removidos: compra, pesagens, recepção, despolpamento e rendimento.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-gh" onclick="document.getElementById('modal-cancel-lote').classList.remove('show')">Voltar</button>
+      <button class="btn btn-red" id="btn-confirmar-cancel" onclick="confirmarCancelLote()">🗑️ Confirmar exclusão</button>
+    </div>
+  </div>
+</div>
+<!-- Modal: Editar Fornecedor -->
+<div class="modal-bg" id="modal-edit-forn">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title" id="ef-title">Editar fornecedor</div>
+    <div class="modal-sub">Apenas o gerente pode alterar dados de fornecedores.</div>
+    <input type="hidden" id="ef-id">
+    <div class="fr"><div class="fg"><label class="fl">Nome *</label><input class="fi" type="text" id="ef-nome"></div><div class="fg"><label class="fl">Município</label><input class="fi" type="text" id="ef-municipio"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Estado</label><input class="fi" type="text" id="ef-estado" placeholder="PA" maxlength="2"></div><div class="fg"><label class="fl">Contato (nome)</label><input class="fi" type="text" id="ef-contato-nome"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Telefone</label><input class="fi" type="text" id="ef-telefone" placeholder="(91) 9 0000-0000"></div><div class="fg"><label class="fl">Status</label><select class="fi" id="ef-ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></div></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:4px;flex-wrap:wrap">
+      <button class="btn btn-red" id="btn-excluir-forn" onclick="excluirFornecedor()">🗑️ Excluir fornecedor</button>
+      <div style="display:flex;gap:8px"><button class="btn btn-gh" onclick="document.getElementById('modal-edit-forn').classList.remove('show')">Cancelar</button><button class="btn btn-p" onclick="salvarFornecedor()">💾 Salvar</button></div>
+    </div>
+  </div>
+</div>
 <script>
 let AU='',TK='',US=null,DEMO=false,LOTES=[],FORNS=[],LOTES_ED=[]
 const HOJE=new Date().toISOString().split('T')[0]
@@ -482,6 +512,9 @@ function simDemo(m,r){
   if(r.includes('historico'))return Promise.resolve([{fornecedor:'São Lucas',rendimento_l_lata:8.2,litros_extraidos:918,latas_processadas:112,data_operacao:'2025-05-19'},{fornecedor:'Beija-Flor',rendimento_l_lata:7.8,litros_extraidos:585,latas_processadas:75,data_operacao:'2025-05-19'}])
   if(r.includes('comparativo-dia'))return Promise.resolve([{fornecedor:'Fazenda São Lucas',latas_recebidas:118,preco_por_lata:28.50,total_pago:3363,litros_extraidos:944,rendimento_l_lata:8.0,custo_por_litro:3.5625}])
   if(r.includes('/relatorios'))return Promise.resolve({status:'aberto',resumo:{qtd_fornecedores:1,total_latas:118,total_litros:944,total_valor_pago:'3363.00',custo_medio_litro:'3.5625',rendimento_medio:'8.0000'},itens:[{fornecedor:'Fazenda São Lucas',latas_recebidas:118,preco_por_lata:28.50,total_pago:3363,litros_extraidos:944,rendimento_l_lata:8.0,custo_por_litro:3.5625,peso_liquido_kg:6640,tipo_frete:'terceiro',valor_frete:150,unidade_fabril:'amazon_polpas'}]})
+  if(m==='DELETE'&&r.includes('/lotes/')){var lid=r.split('/lotes/')[1];var li=DL.findIndex(function(l){return (l.lote_id||l.id)===lid});if(li>=0)DL.splice(li,1);return Promise.resolve({ok:true})}
+  if(m==='PUT'&&r.includes('/fornecedores/')){var fid2=parseInt(r.split('/fornecedores/')[1]);var ff=DF.find(function(f){return f.id===fid2});if(ff)Object.assign(ff,b);return Promise.resolve(ff||{})}
+  if(m==='DELETE'&&r.includes('/fornecedores/')){var fid3=parseInt(r.split('/fornecedores/')[1]);var fi=DF.findIndex(function(f){return f.id===fid3});if(fi>=0)DF.splice(fi,1);return Promise.resolve({ok:true})}
   if(m==='POST')return Promise.resolve({id:'d'+Date.now()})
   return Promise.resolve([])
 }
@@ -542,6 +575,7 @@ function mostrarApp(){
     document.getElementById('n8').style.display=''
     document.getElementById('n9').style.display=''
     document.getElementById('n10').style.display=''
+    mostrarBotoesMgr()
   }
   aplicarPerms();carregaForns();loadS0()
 }
@@ -788,6 +822,17 @@ async function carregarHistorico(){
   }catch(e){el.innerHTML=`<div class="card"><div class="ls">${e.message}</div></div>`}
 }
 function fecharEditModal(){document.getElementById('edit-modal').classList.remove('show')}
+
+function mostrarBotoesMgr(){if(!ehMaster())return;['s0','s1','s2','s3','s4','s5'].forEach(function(id){var el=document.getElementById(id+'-mgr-btns');if(el)el.style.display='flex'})}
+function editarEtapa(tela){if(!ehMaster()){alert('Sem permissão.');return}var ids={s1:'b1lote',s2:'r2lote',s3:'b3lote',s4:'d4lote',s5:'r5lote'};var lid=ids[tela]?document.getElementById(ids[tela])&&document.getElementById(ids[tela]).value:null;go(9);if(lid){setTimeout(function(){var s=document.getElementById('e9lote');if(s){s.value=lid;carregaCamposEdicao()}},400)}}
+var _cancelLoteId=null;
+function abrirCancelLote(tela){if(!ehMaster()){alert('Apenas o gerente pode cancelar lotes.');return}var ids={s1:'b1lote',s2:'r2lote',s3:'b3lote',s4:'d4lote',s5:'r5lote'};var lid=ids[tela]?document.getElementById(ids[tela])&&document.getElementById(ids[tela]).value:null;if(tela==='s0'){var l=LOTES&&LOTES[0];if(l)lid=l.lote_id||l.id}if(!lid){alert('Selecione um lote antes de cancelar.');return}var l=getLote(lid)||LOTES&&LOTES[0];_cancelLoteId=lid;var info=document.getElementById('cancel-lote-info');info.innerHTML=l?('<strong>'+(l.fornecedor||'—')+'</strong> · '+(l.codigo||lid)+'<br>Status: <strong>'+(l.status||'—')+'</strong>'):('Lote ID: '+lid);document.getElementById('modal-cancel-lote').classList.add('show')}
+async function confirmarCancelLote(){if(!_cancelLoteId)return;var btn=document.getElementById('btn-confirmar-cancel');btn.classList.add('loading');btn.disabled=true;try{await req('DELETE','/lotes/'+_cancelLoteId);document.getElementById('modal-cancel-lote').classList.remove('show');_cancelLoteId=null;await carregaLotes();loadS0();alert('Lote cancelado e removido com sucesso.')}catch(e){alert('Erro ao cancelar: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
+var _fornAtual=null;
+function abrirEditForn(f){if(!ehMaster()){alert('Sem permissão.');return}_fornAtual=f;document.getElementById('ef-title').textContent=f?'Editar fornecedor':'Novo fornecedor';document.getElementById('ef-id').value=f&&f.id||'';document.getElementById('ef-nome').value=f&&f.nome||'';document.getElementById('ef-municipio').value=f&&f.municipio||'';document.getElementById('ef-estado').value=f&&f.estado||'PA';document.getElementById('ef-contato-nome').value=f&&f.contato_nome||'';document.getElementById('ef-telefone').value=f&&f.telefone||'';document.getElementById('ef-ativo').value=f&&f.ativo===false?'false':'true';var btnEx=document.getElementById('btn-excluir-forn');btnEx.style.display=f?'':'none';document.getElementById('modal-edit-forn').classList.add('show')}
+async function salvarFornecedor(){var nome=document.getElementById('ef-nome').value.trim();if(!nome){alert('Informe o nome.');return}var body={nome:nome,municipio:document.getElementById('ef-municipio').value.trim(),estado:document.getElementById('ef-estado').value||'PA',contato_nome:document.getElementById('ef-contato-nome').value.trim(),telefone:document.getElementById('ef-telefone').value.trim(),ativo:document.getElementById('ef-ativo').value==='true'};try{var id=document.getElementById('ef-id').value;if(id)await req('PUT','/fornecedores/'+id,body);else await req('POST','/fornecedores',body);document.getElementById('modal-edit-forn').classList.remove('show');carregaForns();loadS7();alert(id?'Fornecedor atualizado!':'Fornecedor cadastrado!')}catch(e){alert('Erro: '+e.message)}}
+async function excluirFornecedor(){if(!_fornAtual)return;if(_fornAtual.total_lotes>0){alert('Fornecedor possui '+_fornAtual.total_lotes+' lote(s) e nao pode ser excluido. Cancele os lotes primeiro.');return}if(!confirm('Excluir permanentemente "'+_fornAtual.nome+'"?'))return;try{await req('DELETE','/fornecedores/'+_fornAtual.id);document.getElementById('modal-edit-forn').classList.remove('show');carregaForns();loadS7();alert('Fornecedor excluido.')}catch(e){alert('Erro: '+e.message)}}
+
 </script>
 </body>
 </html>
