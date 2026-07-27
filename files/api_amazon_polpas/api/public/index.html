@@ -719,6 +719,7 @@ async function gerarRelatorio6(){
         {label:'Litros extraídos',val:fmtBRL(r.total_litros,1)+' L',sub:'total do período',color:'var(--green)'},
         {label:'Rendimento médio',val:fmtBRL(r.rendimento_medio_lata,2)+' L/lt',sub:'média ponderada',color:Number(r.rendimento_medio_lata)>=8?'var(--green)':'var(--yellow)'},
         {label:'Custo médio/L',val:'R$ '+fmtBRL(r.custo_medio_litro,4),sub:'R$/litro produzido',color:Number(r.custo_medio_litro)<=4?'var(--green)':'var(--yellow)'},
+        {label:'Preço médio/lata',val:'R$ '+fmtBRL(precoMedioLata,2),sub:'média simples do período',color:'var(--purple)'},
         {label:'Total investido',val:'R$ '+fmtBRL(r.total_pago,2),sub:'em matéria-prima',color:'var(--purple)'},
       ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)">
         <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div>
@@ -731,12 +732,13 @@ async function gerarRelatorio6(){
     const tForn = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📊 Desempenho por Fornecedor</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:var(--bg3)">${['Fornecedor','Região','Lotes','Latas','Litros','Rend. L/lt','Custo/L','Total pago'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:var(--bg3)">${['Fornecedor','Região','Lotes','Latas','Preço/lt','Litros','Rend. L/lt','Custo/L','Total pago'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
         <tbody>${d.por_fornecedor.map((f,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'#f0fae6':''}">
           <td style="padding:9px 12px;font-weight:600">${f.fornecedor}${i===0?' 🏆':''}</td>
           <td style="padding:9px 12px;color:var(--text2);font-size:12px">${f.regioes||'—'}</td>
           <td style="padding:9px 12px">${f.lotes}</td>
           <td style="padding:9px 12px">${fmtBRL(f.latas,0)}</td>
+          <td style="padding:9px 12px;font-weight:600">R$ ${f.preco_medio_lata||'—'}</td>
           <td style="padding:9px 12px">${fmtBRL(f.litros,1)} L</td>
           <td style="padding:9px 12px;font-weight:700;color:${Number(f.rendimento)>=8?'var(--green)':'var(--yellow)'}">${f.rendimento||'—'}</td>
           <td style="padding:9px 12px;font-weight:700;color:${Number(f.custo_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${f.custo_litro||'—'}</td>
@@ -748,11 +750,12 @@ async function gerarRelatorio6(){
     const tDia = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📅 Produção por Dia</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:var(--bg3)">${['Data','Lotes','Latas','Litros','Rend. Médio','Custo Médio/L','Investido'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:var(--bg3)">${['Data','Lotes','Latas','Preço Médio/lt','Litros','Rend. Médio','Custo Médio/L','Investido'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
         <tbody>${d.por_dia.map(dia=>`<tr style="border-top:1px solid var(--border)">
           <td style="padding:9px 12px;font-weight:600">${fmtDate(dia.data)}</td>
           <td style="padding:9px 12px">${dia.lotes}</td>
           <td style="padding:9px 12px">${fmtBRL(dia.latas,0)}</td>
+          <td style="padding:9px 12px;font-weight:600">R$ ${dia.preco_medio_lata||'—'}</td>
           <td style="padding:9px 12px">${fmtBRL(dia.litros,1)} L</td>
           <td style="padding:9px 12px;color:${Number(dia.rendimento)>=8?'var(--green)':'var(--yellow)'};">${dia.rendimento||'—'} L/lt</td>
           <td style="padding:9px 12px;">R$ ${dia.custo_litro||'—'}</td>
@@ -765,12 +768,13 @@ async function gerarRelatorio6(){
     const tLotes = lotesComDesp.length ? `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🔍 Detalhamento por Lote</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:var(--bg3)">${['Data','Fornecedor','Região','Latas','Litros','Rend.','Sólidos','Marca','Lote Produto','Custo/L','Total'].map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
+        <thead><tr style="background:var(--bg3)">${['Data','Fornecedor','Região','Latas','Preço/lt','Litros','Rend.','Sólidos','Marca','Lote Produto','Custo/L','Total'].map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
         <tbody>${lotesComDesp.map(l=>`<tr style="border-top:1px solid var(--border)">
           <td style="padding:7px 10px;white-space:nowrap">${fmtDate(l.data)}</td>
           <td style="padding:7px 10px;font-weight:600">${l.fornecedor}</td>
           <td style="padding:7px 10px;color:var(--text2)">${l.regiao||'—'}</td>
           <td style="padding:7px 10px">${fmtBRL(l.latas_processadas,0)}</td>
+          <td style="padding:7px 10px;font-weight:600">R$ ${Number(l.preco_por_lata||0).toFixed(2)}</td>
           <td style="padding:7px 10px">${fmtBRL(l.litros_extraidos,1)} L</td>
           <td style="padding:7px 10px;font-weight:700;color:${Number(l.rendimento_l_lata)>=8?'var(--green)':'var(--yellow)'}">${Number(l.rendimento_l_lata||0).toFixed(2)}</td>
           <td style="padding:7px 10px">${l.solidos_totais||'—'}</td>
