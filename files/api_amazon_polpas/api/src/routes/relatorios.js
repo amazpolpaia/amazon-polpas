@@ -1,4 +1,4 @@
-// v2.1 - unidade_fabril
+// v2.2 - periodo route + redesign
 const router = require('express').Router()
 const pool = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
