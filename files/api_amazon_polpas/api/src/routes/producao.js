@@ -174,4 +174,31 @@ router.get('/comparativo-dia', autenticar, async (req, res) => {
   }
 })
 
+
+// PUT /producao/despolpamento/:lote_id — editar despolpamento existente
+router.put('/despolpamento/:lote_id', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
+  const { lote_id } = req.params
+  const { latas_processadas, litros_extraidos, operador_nome, solidos_totais, marca, lote_produto } = req.body
+
+  if (!latas_processadas || !litros_extraidos)
+    return res.status(400).json({ erro: 'latas_processadas e litros_extraidos são obrigatórios.' })
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE despolpamentos
+       SET latas_processadas=$1, litros_extraidos=$2,
+           rendimento_l_lata=ROUND($2::numeric/$1::numeric,4),
+           operador_nome=$3, solidos_totais=$4, marca=$5, lote_produto=$6
+       WHERE lote_id=$7
+       RETURNING *`,
+      [latas_processadas, litros_extraidos, operador_nome||null, solidos_totais||null, marca||null, lote_produto||null, lote_id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Despolpamento não encontrado para este lote.' })
+    res.json(rows[0])
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao atualizar despolpamento.' })
+  }
+})
+
 module.exports = router
