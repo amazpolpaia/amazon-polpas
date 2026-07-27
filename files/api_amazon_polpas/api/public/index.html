@@ -781,14 +781,16 @@ async function salvarEdicao(){
   btn.classList.add('loading');btn.disabled=true
   try{
     const rotas={compra:'/compras/',chegada:'/pesagens/chegada/',recepcao:'/recepcoes/',saida:'/pesagens/saida/',despolpa:'/producao/despolpamento/'}
-    const corpos={
-      compra:{qtd_latas_prevista:parseInt(document.getElementById('ed-latas').value),preco_por_lata:parseFloat(document.getElementById('ed-preco').value),regiao:document.getElementById('ed-regiao').value,tipo_frete:document.getElementById('ed-tipo-frete').value,valor_frete:parseFloat(document.getElementById('ed-valor-frete').value)||0,unidade_fabril:getUnidadeFabril('ed-unidade','ed-unidade-outros')},
-      chegada:{peso_bruto_kg:parseFloat(document.getElementById('ed-bruto').value),placa_veiculo:document.getElementById('ed-placa').value},
-      recepcao:{qtd_latas_recebidas:parseInt(document.getElementById('ed-recebidas').value),condicao_fruto:document.getElementById('ed-condicao').value},
-      saida:{peso_saida_kg:parseFloat(document.getElementById('ed-saida').value)},
-      despolpa:{latas_processadas:parseInt(document.getElementById('ed-dlatas').value),litros_extraidos:parseFloat(document.getElementById('ed-litros').value),operador_nome:document.getElementById('ed-op').value,solidos_totais:document.getElementById('ed-solidos').value||null,marca:document.getElementById('ed-marca').value||null,lote_produto:document.getElementById('ed-lote-produto').value||null}
-    }
-    await req('PUT',rotas[mod]+lid,corpos[mod])
+    function gv(id){var el=document.getElementById(id);return el?el.value:null}
+    const corposMap={
+      compra:function(){return{qtd_latas_prevista:parseInt(gv('ed-latas')),preco_por_lata:parseFloat(gv('ed-preco')),regiao:gv('ed-regiao'),tipo_frete:gv('ed-tipo-frete'),valor_frete:parseFloat(gv('ed-valor-frete'))||0,unidade_fabril:getUnidadeFabril('ed-unidade','ed-unidade-outros')}},
+      chegada:function(){return{peso_bruto_kg:parseFloat(gv('ed-bruto')),placa_veiculo:gv('ed-placa')}},
+      recepcao:function(){return{qtd_latas_recebidas:parseInt(gv('ed-recebidas')),condicao_fruto:gv('ed-condicao')}},
+      saida:function(){return{peso_saida_kg:parseFloat(gv('ed-saida'))}},
+      despolpa:function(){return{latas_processadas:parseInt(gv('ed-dlatas')),litros_extraidos:parseFloat(gv('ed-litros')),operador_nome:gv('ed-op'),solidos_totais:gv('ed-solidos')||null,marca:gv('ed-marca')||null,lote_produto:gv('ed-lote-produto')||null}}
+    };
+    const corpos={compra:corposMap.compra,chegada:corposMap.chegada,recepcao:corposMap.recepcao,saida:corposMap.saida,despolpa:corposMap.despolpa}
+    await req('PUT',rotas[mod]+lid,typeof corpos[mod]=='function'?corpos[mod]():corpos[mod])
     const ok=document.getElementById('e9ok');ok.style.display='block';setTimeout(()=>ok.style.display='none',4000)
     await carregaLotes();carregaCamposEdicao()
   }catch(e){alert('Erro: '+e.message)}
