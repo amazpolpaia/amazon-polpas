@@ -137,57 +137,7 @@ router.get('/historico', autenticar, async (req, res) => {
   }
 })
 
-// GET /relatorios/periodo?inicio=2025-05-01&fim=2025-05-20 — relatórios fechados no intervalo
-router.get('/periodo', autenticar, async (req, res) => {
-  const inicio = req.query.inicio
-  const fim = req.query.fim || inicio
-
-  if (!inicio)
-    return res.status(400).json({ erro: 'Informe inicio (YYYY-MM-DD).' })
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT rd.*, f.nome AS melhor_fornecedor_nome
-       FROM relatorios_diarios rd
-       LEFT JOIN fornecedores f ON f.id = rd.melhor_fornecedor_id
-       WHERE rd.data_operacao >= $1::date AND rd.data_operacao <= $2::date
-       ORDER BY rd.data_operacao DESC`,
-      [inicio, fim]
-    )
-
-    const totais = rows.reduce(
-      (acc, r) => {
-        acc.dias += 1
-        acc.total_latas += Number(r.total_latas || 0)
-        acc.total_litros += Number(r.total_litros || 0)
-        acc.total_valor_pago += Number(r.total_valor_pago || 0)
-        return acc
-      },
-      { dias: 0, total_latas: 0, total_litros: 0, total_valor_pago: 0 }
-    )
-
-    totais.custo_medio_litro =
-      totais.total_litros > 0
-        ? (totais.total_valor_pago / totais.total_litros).toFixed(4)
-        : null
-
-    respostaComValores(req, res, {
-      inicio,
-      fim,
-      resumo: {
-        dias_fechados: totais.dias,
-        total_latas: totais.total_latas,
-        total_litros: totais.total_litros,
-        total_valor_pago: totais.total_valor_pago.toFixed(2),
-        custo_medio_litro: totais.custo_medio_litro,
-      },
-      relatorios: rows,
-    })
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ erro: 'Erro ao buscar relatórios do período.' })
-  }
-})
+// (rota /periodo antiga removida — ver nova abaixo)
 
 // GET /relatorios/desempenho-fornecedores — ranking geral
 router.get('/desempenho-fornecedores', autenticar, async (req, res) => {
