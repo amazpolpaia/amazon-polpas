@@ -129,6 +129,12 @@ router.post('/rendimento', autenticar, autorizar('gerente', 'producao'), async (
       ]
     )
 
+    // Encerra o lote (despolpado -> encerrado)
+    await pool.query(
+      "UPDATE lotes SET status='encerrado', atualizado_em=NOW() WHERE id=$1",
+      [lote_id]
+    )
+
     res.status(201).json(rows[0])
   } catch (err) {
     if (err.code === '23505')
