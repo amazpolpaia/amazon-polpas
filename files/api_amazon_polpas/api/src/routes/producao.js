@@ -9,7 +9,7 @@ const { respostaComValores } = require('../utils/valores')
 router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
   const {
     lote_id, latas_processadas, litros_extraidos,
-    turno, operador_nome, hora_inicio, hora_fim, observacoes
+    turno, operador_nome, hora_inicio, hora_fim, observacoes, lote_produto
   } = req.body
 
   if (!lote_id || !latas_processadas || !litros_extraidos)
@@ -22,12 +22,12 @@ router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), asyn
     const { rows } = await pool.query(
       `INSERT INTO despolpamentos
          (lote_id, latas_processadas, litros_extraidos, turno,
-          operador_nome, hora_inicio, hora_fim, observacoes, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, registrado_por)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING *`,
       [
         lote_id, latas_processadas, litros_extraidos, turno,
-        operador_nome, hora_inicio, hora_fim, observacoes, req.usuario.id
+        operador_nome, hora_inicio, hora_fim, observacoes, lote_produto||null, req.usuario.id
       ]
     )
 
