@@ -699,46 +699,87 @@ async function loadS6(){
 }
 
 async function gerarRelatorio6(){
-  const inicio = document.getElementById('r6inicio').value;
-  const fim = document.getElementById('r6fim').value;
+  const inicio=document.getElementById('r6inicio').value;
+  const fim=document.getElementById('r6fim').value;
   if(!inicio||!fim){alert('Selecione o período.');return}
-  const el = document.getElementById('r6resultado');
-  el.innerHTML = '<div class="ls">Gerando relatório...</div>';
-  try {
-    const d = await req('GET','/relatorios/periodo?inicio='+inicio+'&fim='+fim);
-    const r = d.resumo;
-    const fmtBRL = (v,dec=2) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
-    const fmtDate = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
-    
-    // KPI cards
-    const kpis = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
+  const el=document.getElementById('r6resultado');
+  el.innerHTML='<div class="ls">Gerando relatório...</div>';
+  try{
+    const d=await req('GET','/relatorios/periodo?inicio='+inicio+'&fim='+fim);
+    const r=d.resumo;
+    const fmtBRL=(v,dec=2)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+    const fmtDate=s=>s?new Date(s+'T12:00:00').toLocaleDateString('pt-BR'):'—';
+
+    // Preço médio ponderado do período (média simples por lote)
+    const lotesDesp=d.lotes_detalhado.filter(l=>l.litros_extraidos);
+    const precoMedioLata=lotesDesp.length>0?(lotesDesp.reduce((s,l)=>s+Number(l.preco_por_lata||0),0)/lotesDesp.length):0;
+
+    // Por fornecedor — com preco_medio
+    const porForn={};
+    for(const l of d.lotes_detalhado){
+      if(!porForn[l.fornecedor]) porForn[l.fornecedor]={fornecedor:l.fornecedor,lotes:0,latas:0,litros:0,pago:0,regioes:new Set(),precos:[]};
+      const f=porForn[l.fornecedor];
+      f.lotes++;
+      f.latas+=Number(l.latas_processadas||0);
+      f.litros+=Number(l.litros_extraidos||0);
+      f.pago+=Number(l.total_estimado||0);
+      if(l.regiao)f.regioes.add(l.regiao);
+      if(l.preco_por_lata)f.precos.push(Number(l.preco_por_lata));
+    }
+    const fornecedores=Object.values(porForn).map(f=>({
+      ...f,
+      regioes:[...f.regioes].join(', '),
+      rendimento:f.latas>0?(f.litros/f.latas).toFixed(2):null,
+      custo_litro:f.litros>0?(f.pago/f.litros).toFixed(4):null,
+      preco_medio:f.precos.length>0?(f.precos.reduce((a,b)=>a+b,0)/f.precos.length).toFixed(2):null
+    })).sort((a,b)=>Number(a.custo_litro)-Number(b.custo_litro));
+
+    // Por dia — com preco_medio
+    const porDia={};
+    for(const l of d.lotes_detalhado){
+      const dt=String(l.data);
+      if(!porDia[dt]) porDia[dt]={data:dt,lotes:0,latas:0,litros:0,pago:0,precos:[]};
+      porDia[dt].lotes++;
+      porDia[dt].latas+=Number(l.latas_processadas||0);
+      porDia[dt].litros+=Number(l.litros_extraidos||0);
+      porDia[dt].pago+=Number(l.total_estimado||0);
+      if(l.preco_por_lata)porDia[dt].precos.push(Number(l.preco_por_lata));
+    }
+    const porDiaArr=Object.values(porDia).sort((a,b)=>a.data.localeCompare(b.data)).map(dx=>({
+      ...dx,
+      rendimento:dx.latas>0?(dx.litros/dx.latas).toFixed(2):null,
+      custo_litro:dx.litros>0?(dx.pago/dx.litros).toFixed(4):null,
+      preco_medio:dx.precos.length>0?(dx.precos.reduce((a,b)=>a+b,0)/dx.precos.length).toFixed(2):null
+    }));
+
+    // KPIs
+    const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px">
       ${[
-        {label:'Total de lotes',val:r.total_lotes,sub:r.total_lotes_despolpados+' despolpados',color:'var(--purple)'},
-        {label:'Latas processadas',val:fmtBRL(r.total_latas,0)+' lt',sub:'14 kg/lata',color:'var(--green)'},
-        {label:'Litros extraídos',val:fmtBRL(r.total_litros,1)+' L',sub:'total do período',color:'var(--green)'},
-        {label:'Rendimento médio',val:fmtBRL(r.rendimento_medio_lata,2)+' L/lt',sub:'média ponderada',color:Number(r.rendimento_medio_lata)>=8?'var(--green)':'var(--yellow)'},
-        {label:'Custo médio/L',val:'R$ '+fmtBRL(r.custo_medio_litro,4),sub:'R$/litro produzido',color:Number(r.custo_medio_litro)<=4?'var(--green)':'var(--yellow)'},
-        {label:'Preço médio/lata',val:'R$ '+fmtBRL(precoMedioLata,2),sub:'média simples do período',color:'var(--purple)'},
-        {label:'Total investido',val:'R$ '+fmtBRL(r.total_pago,2),sub:'em matéria-prima',color:'var(--purple)'},
+        {label:'TOTAL DE LOTES',val:r.total_lotes,sub:r.total_lotes_despolpados+' despolpados',color:'var(--purple)'},
+        {label:'LATAS PROCESSADAS',val:fmtBRL(r.total_latas,0)+' lt',sub:'14 kg/lata',color:'var(--green)'},
+        {label:'PREÇO MÉDIO/LATA',val:'R$ '+fmtBRL(precoMedioLata,2),sub:'média simples do período',color:'var(--purple)'},
+        {label:'LITROS EXTRAÍDOS',val:fmtBRL(r.total_litros,1)+' L',sub:'total do período',color:'var(--green)'},
+        {label:'RENDIMENTO MÉDIO',val:fmtBRL(r.rendimento_medio_lata,2)+' L/lt',sub:'média ponderada',color:Number(r.rendimento_medio_lata)>=8?'var(--green)':'var(--yellow)'},
+        {label:'CUSTO MÉDIO/L',val:'R$ '+fmtBRL(r.custo_medio_litro,4),sub:'R$/litro produzido',color:Number(r.custo_medio_litro)<=4?'var(--green)':'var(--yellow)'},
+        {label:'TOTAL INVESTIDO',val:'R$ '+fmtBRL(r.total_pago,2),sub:'em matéria-prima',color:'var(--purple)'},
       ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)">
-        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div>
-        <div style="font-size:22px;font-weight:700;color:${k.color}">${k.val}</div>
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div>
+        <div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div>
       </div>`).join('')}
     </div>`;
 
-    // Por fornecedor
-    const tForn = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+    // Tabela fornecedores
+    const tForn=`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📊 Desempenho por Fornecedor</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:var(--bg3)">${['Fornecedor','Região','Lotes','Latas','Preço/lt','Litros','Rend. L/lt','Custo/L','Total pago'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
-        <tbody>${d.por_fornecedor.map((f,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'#f0fae6':''}">
+        <thead><tr style="background:var(--bg3)">${['Fornecedor','Região','Lotes','Latas','Preço/lt','Litros','Rend. L/lt','Custo/L','Total pago'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
+        <tbody>${fornecedores.map((f,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(76,175,80,.06)':''}">
           <td style="padding:9px 12px;font-weight:600">${f.fornecedor}${i===0?' 🏆':''}</td>
           <td style="padding:9px 12px;color:var(--text2);font-size:12px">${f.regioes||'—'}</td>
           <td style="padding:9px 12px">${f.lotes}</td>
           <td style="padding:9px 12px">${fmtBRL(f.latas,0)}</td>
-          <td style="padding:9px 12px;font-weight:600">R$ ${f.preco_medio_lata||'—'}</td>
+          <td style="padding:9px 12px;font-weight:600">R$ ${f.preco_medio||'—'}</td>
           <td style="padding:9px 12px">${fmtBRL(f.litros,1)} L</td>
           <td style="padding:9px 12px;font-weight:700;color:${Number(f.rendimento)>=8?'var(--green)':'var(--yellow)'}">${f.rendimento||'—'}</td>
           <td style="padding:9px 12px;font-weight:700;color:${Number(f.custo_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${f.custo_litro||'—'}</td>
@@ -746,16 +787,16 @@ async function gerarRelatorio6(){
         </tr>`).join('')}</tbody>
       </table></div></div>`;
 
-    // Por dia
-    const tDia = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+    // Tabela por dia
+    const tDia=`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📅 Produção por Dia</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:var(--bg3)">${['Data','Lotes','Latas','Preço Médio/lt','Litros','Rend. Médio','Custo Médio/L','Investido'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
-        <tbody>${d.por_dia.map(dia=>`<tr style="border-top:1px solid var(--border)">
+        <thead><tr style="background:var(--bg3)">${['Data','Lotes','Latas','Preço Médio/lt','Litros','Rend. Médio','Custo Médio/L','Investido'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
+        <tbody>${porDiaArr.map(dia=>`<tr style="border-top:1px solid var(--border)">
           <td style="padding:9px 12px;font-weight:600">${fmtDate(dia.data)}</td>
           <td style="padding:9px 12px">${dia.lotes}</td>
           <td style="padding:9px 12px">${fmtBRL(dia.latas,0)}</td>
-          <td style="padding:9px 12px;font-weight:600">R$ ${dia.preco_medio_lata||'—'}</td>
+          <td style="padding:9px 12px;font-weight:600">R$ ${dia.preco_medio||'—'}</td>
           <td style="padding:9px 12px">${fmtBRL(dia.litros,1)} L</td>
           <td style="padding:9px 12px;color:${Number(dia.rendimento)>=8?'var(--green)':'var(--yellow)'};">${dia.rendimento||'—'} L/lt</td>
           <td style="padding:9px 12px;">R$ ${dia.custo_litro||'—'}</td>
@@ -763,13 +804,12 @@ async function gerarRelatorio6(){
         </tr>`).join('')}</tbody>
       </table></div></div>`;
 
-    // Detalhamento por lote
-    const lotesComDesp = d.lotes_detalhado.filter(l=>l.litros_extraidos);
-    const tLotes = lotesComDesp.length ? `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+    // Tabela detalhamento por lote
+    const tLotes=lotesDesp.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
       <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🔍 Detalhamento por Lote</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:var(--bg3)">${['Data','Fornecedor','Região','Latas','Preço/lt','Litros','Rend.','Sólidos','Marca','Lote Produto','Custo/L','Total'].map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
-        <tbody>${lotesComDesp.map(l=>`<tr style="border-top:1px solid var(--border)">
+        <tbody>${lotesDesp.map(l=>`<tr style="border-top:1px solid var(--border)">
           <td style="padding:7px 10px;white-space:nowrap">${fmtDate(l.data)}</td>
           <td style="padding:7px 10px;font-weight:600">${l.fornecedor}</td>
           <td style="padding:7px 10px;color:var(--text2)">${l.regiao||'—'}</td>
@@ -783,21 +823,18 @@ async function gerarRelatorio6(){
           <td style="padding:7px 10px;font-weight:700;color:${Number(l.custo_por_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${Number(l.custo_por_litro||0).toFixed(4)}</td>
           <td style="padding:7px 10px">R$ ${fmtBRL(l.total_estimado)}</td>
         </tr>`).join('')}</tbody>
-      </table></div></div>` : '';
+      </table></div></div>`:'';
 
-    const periodoStr = fmtDate(inicio)+' a '+fmtDate(fim);
-    el.innerHTML = `
-      <div id="print-area">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
-          <div>
-            <h2 style="font-size:20px;font-weight:700;color:var(--purple);margin:0">Relatório de Produção</h2>
-            <div style="font-size:13px;color:var(--text2);margin-top:2px">${periodoStr} · Amazon Polpas</div>
-          </div>
-          <div style="font-size:11px;color:var(--text3)">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-        </div>
-        ${kpis}${tForn}${tDia}${tLotes}
-      </div>`;
-  } catch(e) { el.innerHTML = '<div class="ls">Erro: '+e.message+'</div>'; }
+    const periodoStr=fmtDate(inicio)+' a '+fmtDate(fim);
+    el.innerHTML=`<div id="print-area">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+        <div><h2 style="font-size:20px;font-weight:700;color:var(--purple);margin:0">Relatório de Produção</h2>
+        <div style="font-size:13px;color:var(--text2);margin-top:2px">${periodoStr} · Amazon Polpas</div></div>
+        <div style="font-size:11px;color:var(--text3)">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      ${kpis}${tForn}${tDia}${tLotes}
+    </div>`;
+  }catch(e){el.innerHTML='<div class="ls">Erro: '+e.message+'</div>';}
 }
 
 
