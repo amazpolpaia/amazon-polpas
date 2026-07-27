@@ -199,4 +199,110 @@ router.get('/desempenho-fornecedores', autenticar, async (req, res) => {
   }
 })
 
+
+// GET /relatorios/periodo?inicio=2026-07-21&fim=2026-07-24 — relatório executivo por período
+router.get('/periodo', autenticar, async (req, res) => {
+  const { inicio, fim } = req.query
+  if (!inicio || !fim) return res.status(400).json({ erro: 'Informe inicio e fim.' })
+  try {
+    // 1. Lotes e rendimentos por período
+    const { rows: lotes } = await pool.query(`
+      SELECT
+        f.nome AS fornecedor,
+        c.regiao,
+        c.unidade_fabril,
+        DATE(l.data_operacao) AS data,
+        l.status,
+        c.qtd_latas_prevista,
+        c.preco_por_lata,
+        c.total_estimado,
+        c.tipo_frete,
+        c.valor_frete,
+        ps.peso_bruto_kg,
+        ps.peso_saida_kg,
+        ps.peso_liquido_kg,
+        r.qtd_latas_recebidas AS latas_recebidas,
+        d.latas_processadas,
+        d.litros_extraidos,
+        d.rendimento_l_lata,
+        d.solidos_totais,
+        d.marca,
+        d.lote_produto,
+        CASE WHEN d.litros_extraidos > 0 THEN ROUND(c.total_estimado::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
+      FROM lotes l
+      JOIN fornecedores f ON f.id = l.fornecedor_id
+      LEFT JOIN compras c ON c.lote_id = l.id
+      LEFT JOIN pesagens_saida ps ON ps.lote_id = l.id
+      LEFT JOIN recepcoes r ON r.lote_id = l.id
+      LEFT JOIN despolpamentos d ON d.lote_id = l.id
+      WHERE DATE(l.data_operacao) BETWEEN $1 AND $2
+      ORDER BY l.data_operacao, f.nome
+    `, [inicio, fim])
+
+    // 2. Totais gerais
+    const lotesFin = lotes.filter(l => l.litros_extraidos)
+    const totalLatas = lotesFin.reduce((s,l)=>s+Number(l.latas_processadas||0),0)
+    const totalLitros = lotesFin.reduce((s,l)=>s+Number(l.litros_extraidos||0),0)
+    const totalPago = lotesFin.reduce((s,l)=>s+Number(l.total_estimado||0),0)
+    const totalPesoLiq = lotes.reduce((s,l)=>s+Number(l.peso_liquido_kg||0),0)
+    const custoMedioLitro = totalLitros>0 ? (totalPago/totalLitros) : 0
+    const rendMedioLata = totalLatas>0 ? (totalLitros/totalLatas) : 0
+
+    // 3. Por fornecedor
+    const porForn = {}
+    for(const l of lotes){
+      if(!porForn[l.fornecedor]) porForn[l.fornecedor]={fornecedor:l.fornecedor,lotes:0,latas:0,litros:0,pago:0,pesoLiq:0,regioes:new Set()}
+      const f=porForn[l.fornecedor]
+      f.lotes++
+      f.latas+=Number(l.latas_processadas||0)
+      f.litros+=Number(l.litros_extraidos||0)
+      f.pago+=Number(l.total_estimado||0)
+      f.pesoLiq+=Number(l.peso_liquido_kg||0)
+      if(l.regiao)f.regioes.add(l.regiao)
+    }
+    const fornecedores = Object.values(porForn).map(f=>({
+      ...f,
+      regioes: [...f.regioes].join(', '),
+      rendimento: f.latas>0?(f.litros/f.latas).toFixed(2):null,
+      custo_litro: f.litros>0?(f.pago/f.litros).toFixed(4):null
+    })).sort((a,b)=>Number(a.custo_litro)-Number(b.custo_litro))
+
+    // 4. Por dia
+    const porDia = {}
+    for(const l of lotes){
+      const d=String(l.data)
+      if(!porDia[d]) porDia[d]={data:d,lotes:0,latas:0,litros:0,pago:0}
+      porDia[d].lotes++
+      porDia[d].latas+=Number(l.latas_processadas||0)
+      porDia[d].litros+=Number(l.litros_extraidos||0)
+      porDia[d].pago+=Number(l.total_estimado||0)
+    }
+    const porDiaArr = Object.values(porDia).sort((a,b)=>a.data.localeCompare(b.data)).map(d=>({
+      ...d,
+      rendimento: d.latas>0?(d.litros/d.latas).toFixed(2):null,
+      custo_litro: d.litros>0?(d.pago/d.litros).toFixed(4):null
+    }))
+
+    res.json({
+      periodo:{inicio,fim},
+      resumo:{
+        total_lotes:lotes.length,
+        total_lotes_despolpados:lotesFin.length,
+        total_latas:totalLatas,
+        total_litros:Number(totalLitros.toFixed(1)),
+        total_pago:Number(totalPago.toFixed(2)),
+        total_peso_liquido_kg:Number(totalPesoLiq.toFixed(1)),
+        custo_medio_litro:Number(custoMedioLitro.toFixed(4)),
+        rendimento_medio_lata:Number(rendMedioLata.toFixed(2))
+      },
+      por_fornecedor:fornecedores,
+      por_dia:porDiaArr,
+      lotes_detalhado:lotes
+    })
+  } catch(err) {
+    console.error(err)
+    res.status(500).json({erro:'Erro ao gerar relatório.'})
+  }
+})
+
 module.exports = router
