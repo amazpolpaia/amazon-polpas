@@ -168,9 +168,9 @@ router.get('/periodo', autenticar, async (req, res) => {
         c.total_estimado,
         c.tipo_frete,
         c.valor_frete,
-        ps.peso_bruto_kg,
+        pc.peso_bruto_kg,
         ps.peso_saida_kg,
-        ps.peso_liquido_kg,
+        (COALESCE(pc.peso_bruto_kg,0) - COALESCE(ps.peso_saida_kg,0)) AS peso_liquido_kg,
         r.qtd_latas_recebidas AS latas_recebidas,
         d.latas_processadas,
         d.litros_extraidos,
@@ -182,6 +182,7 @@ router.get('/periodo', autenticar, async (req, res) => {
       FROM lotes l
       JOIN fornecedores f ON f.id = l.fornecedor_id
       LEFT JOIN compras c ON c.lote_id = l.id
+      LEFT JOIN pesagens_chegada pc ON pc.lote_id = l.id
       LEFT JOIN pesagens_saida ps ON ps.lote_id = l.id
       LEFT JOIN recepcoes r ON r.lote_id = l.id
       LEFT JOIN despolpamentos d ON d.lote_id = l.id
