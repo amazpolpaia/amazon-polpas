@@ -187,7 +187,6 @@ router.put('/despolpamento/:lote_id', autenticar, autorizar('gerente', 'producao
     const { rows } = await pool.query(
       `UPDATE despolpamentos
        SET latas_processadas=$1, litros_extraidos=$2,
-           rendimento_l_lata=ROUND($2::numeric/$1::numeric,4),
            operador_nome=$3, solidos_totais=$4, marca=$5, lote_produto=$6
        WHERE lote_id=$7
        RETURNING *`,
