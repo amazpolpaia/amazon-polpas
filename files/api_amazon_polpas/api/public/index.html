@@ -154,6 +154,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 .edit-modal-bg.show{display:flex}
 .edit-modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
 </style>
+<style id="print-css">@media print{body *{visibility:hidden}#print-area,#print-area *{visibility:visible}#print-area{position:absolute;top:0;left:0;width:100%;padding:20px}}</style>
 </head>
 <body>
 
@@ -351,33 +352,17 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 
 <!-- S6 -->
 <div class="screen" id="s6">
-  <div class="section-header sh-duo">
-    <div><div class="sh-title" id="r6title">Relatório final</div><div class="sh-sub" id="r6sub">Consolidado do dia</div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <input class="fi" type="date" id="r6data" style="width:auto;padding:8px 12px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff" onchange="loadS6()">
-      <button class="btn btn-w" onclick="window.print()">Imprimir</button>
-      <button class="btn btn-y" id="bc6" onclick="fecharDia()">Fechar dia</button>
+  <div class="section-header sh-duo"><div><div class="sh-title">Relatório executivo</div><div class="sh-sub">Indicadores de produção e desempenho por período</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-gh" onclick="window.print()" style="font-size:12px">🖨️ Imprimir</button>
     </div>
   </div>
-  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--purple)">
-    <div class="card-title">Relatório por período</div>
-    <div class="card-sub">Consulte dias fechados entre duas datas</div>
-    <div class="fr" style="margin-top:8px;align-items:flex-end">
-      <div class="fg" style="margin-bottom:0"><label class="fl">De</label><input class="fi" type="date" id="r6ini"></div>
-      <div class="fg" style="margin-bottom:0"><label class="fl">Até</label><input class="fi" type="date" id="r6fim"></div>
-      <button class="btn btn-p" onclick="loadPeriodo()" style="margin-bottom:0">Buscar</button>
-    </div>
-    <div id="r6periodo" style="margin-top:12px"></div>
+  <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap">
+    <div class="fg" style="min-width:160px"><label class="fl">Data início</label><input class="fi" type="date" id="r6inicio"></div>
+    <div class="fg" style="min-width:160px"><label class="fl">Data fim</label><input class="fi" type="date" id="r6fim"></div>
+    <button class="btn btn-p" onclick="gerarRelatorio6()" style="padding:10px 20px">Gerar relatório</button>
   </div>
-  <div class="g4">
-    <div class="met mg"><div class="met-label">Total latas</div><div class="met-val" id="m1">—</div></div>
-    <div class="met mp"><div class="met-label">Total litros</div><div class="met-val" id="m2">—</div></div>
-    <div class="met my"><div class="met-label">Custo médio/L</div><div class="met-val" id="m3">—</div></div>
-    <div class="met mpl"><div class="met-label">Total investido</div><div class="met-val" id="m4">—</div></div>
-  </div>
-  <div class="card" style="margin-bottom:14px"><div class="card-title" style="margin-bottom:3px">Relatório por fornecedor</div><div id="r6tab"><div class="ls">Carregando...</div></div></div>
-  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--green);display:none" id="r6pagamento-wrap"><div id="r6pagamento"></div></div>
-  <div class="g3" id="r6anal"></div>
+  <div id="r6resultado"></div>
 </div>
 
 <!-- S7 -->
@@ -701,10 +686,117 @@ function renderRelatorio(data,dia){
   if(itens.length){const mb=[...itens].sort((a,b)=>Number(a.custo_por_litro)-Number(b.custo_por_litro))[0];const mr=[...itens].sort((a,b)=>Number(b.rendimento_l_lata)-Number(a.rendimento_l_lata))[0];document.getElementById('r6anal').innerHTML=`<div class="ac acg"><div style="font-size:11px;font-weight:700;color:var(--green-dark);margin-bottom:8px;text-transform:uppercase">Fórmula aplicada</div><div style="font-family:var(--mono);font-size:12px;color:var(--green-dark);line-height:2.1">Custo/L = Σ(preço×latas)<br>÷ Σ(litros totais)<br><span style="font-size:18px;font-weight:700">= ${fmtMoeda(r.custo_medio_litro,4)}/L</span></div></div><div class="ac acp"><div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:8px;text-transform:uppercase">Melhor custo/litro</div><div class="fw7" style="margin-bottom:4px">${mb.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--purple)">${fmtMoeda(mb.custo_por_litro,4)}/L</div></div><div class="ac acy"><div style="font-size:11px;font-weight:700;color:var(--yellow-dark);margin-bottom:8px;text-transform:uppercase">Maior rendimento</div><div class="fw7" style="margin-bottom:4px">${mr.fornecedor}</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--yellow-dark)">${Number(mr.rendimento_l_lata).toFixed(1)} L/lata</div></div>`}
 }
 async function loadS6(){
-  const dia=document.getElementById('r6data')?.value||DATA_TRABALHO||HOJE
-  try{const data=await req('GET','/relatorios?data='+dia);renderRelatorio(data,dia)}
-  catch(e){document.getElementById('r6tab').innerHTML='<div class="ls">'+e.message+'</div>'}
+  // Inicializar datas padrão: últimos 7 dias
+  const hoje = new Date();
+  const fim = hoje.toISOString().split('T')[0];
+  const ini = new Date(hoje);
+  ini.setDate(ini.getDate()-6);
+  const inicio = ini.toISOString().split('T')[0];
+  const iEl = document.getElementById('r6inicio');
+  const fEl = document.getElementById('r6fim');
+  if(iEl && !iEl.value) iEl.value = inicio;
+  if(fEl && !fEl.value) fEl.value = fim;
 }
+
+async function gerarRelatorio6(){
+  const inicio = document.getElementById('r6inicio').value;
+  const fim = document.getElementById('r6fim').value;
+  if(!inicio||!fim){alert('Selecione o período.');return}
+  const el = document.getElementById('r6resultado');
+  el.innerHTML = '<div class="ls">Gerando relatório...</div>';
+  try {
+    const d = await req('GET','/relatorios/periodo?inicio='+inicio+'&fim='+fim);
+    const r = d.resumo;
+    const fmtBRL = (v,dec=2) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+    const fmtDate = s => s ? new Date(s+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    
+    // KPI cards
+    const kpis = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px">
+      ${[
+        {label:'Total de lotes',val:r.total_lotes,sub:r.total_lotes_despolpados+' despolpados',color:'var(--purple)'},
+        {label:'Latas processadas',val:fmtBRL(r.total_latas,0)+' lt',sub:'14 kg/lata',color:'var(--green)'},
+        {label:'Litros extraídos',val:fmtBRL(r.total_litros,1)+' L',sub:'total do período',color:'var(--green)'},
+        {label:'Rendimento médio',val:fmtBRL(r.rendimento_medio_lata,2)+' L/lt',sub:'média ponderada',color:Number(r.rendimento_medio_lata)>=8?'var(--green)':'var(--yellow)'},
+        {label:'Custo médio/L',val:'R$ '+fmtBRL(r.custo_medio_litro,4),sub:'R$/litro produzido',color:Number(r.custo_medio_litro)<=4?'var(--green)':'var(--yellow)'},
+        {label:'Total investido',val:'R$ '+fmtBRL(r.total_pago,2),sub:'em matéria-prima',color:'var(--purple)'},
+      ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div>
+        <div style="font-size:22px;font-weight:700;color:${k.color}">${k.val}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div>
+      </div>`).join('')}
+    </div>`;
+
+    // Por fornecedor
+    const tForn = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📊 Desempenho por Fornecedor</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg3)">${['Fornecedor','Região','Lotes','Latas','Litros','Rend. L/lt','Custo/L','Total pago'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
+        <tbody>${d.por_fornecedor.map((f,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'#f0fae6':''}">
+          <td style="padding:9px 12px;font-weight:600">${f.fornecedor}${i===0?' 🏆':''}</td>
+          <td style="padding:9px 12px;color:var(--text2);font-size:12px">${f.regioes||'—'}</td>
+          <td style="padding:9px 12px">${f.lotes}</td>
+          <td style="padding:9px 12px">${fmtBRL(f.latas,0)}</td>
+          <td style="padding:9px 12px">${fmtBRL(f.litros,1)} L</td>
+          <td style="padding:9px 12px;font-weight:700;color:${Number(f.rendimento)>=8?'var(--green)':'var(--yellow)'}">${f.rendimento||'—'}</td>
+          <td style="padding:9px 12px;font-weight:700;color:${Number(f.custo_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${f.custo_litro||'—'}</td>
+          <td style="padding:9px 12px">R$ ${fmtBRL(f.pago)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div>`;
+
+    // Por dia
+    const tDia = `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📅 Produção por Dia</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg3)">${['Data','Lotes','Latas','Litros','Rend. Médio','Custo Médio/L','Investido'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead>
+        <tbody>${d.por_dia.map(dia=>`<tr style="border-top:1px solid var(--border)">
+          <td style="padding:9px 12px;font-weight:600">${fmtDate(dia.data)}</td>
+          <td style="padding:9px 12px">${dia.lotes}</td>
+          <td style="padding:9px 12px">${fmtBRL(dia.latas,0)}</td>
+          <td style="padding:9px 12px">${fmtBRL(dia.litros,1)} L</td>
+          <td style="padding:9px 12px;color:${Number(dia.rendimento)>=8?'var(--green)':'var(--yellow)'};">${dia.rendimento||'—'} L/lt</td>
+          <td style="padding:9px 12px;">R$ ${dia.custo_litro||'—'}</td>
+          <td style="padding:9px 12px">R$ ${fmtBRL(dia.pago)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div>`;
+
+    // Detalhamento por lote
+    const lotesComDesp = d.lotes_detalhado.filter(l=>l.litros_extraidos);
+    const tLotes = lotesComDesp.length ? `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🔍 Detalhamento por Lote</div>
+      <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--bg3)">${['Data','Fornecedor','Região','Latas','Litros','Rend.','Sólidos','Marca','Lote Produto','Custo/L','Total'].map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead>
+        <tbody>${lotesComDesp.map(l=>`<tr style="border-top:1px solid var(--border)">
+          <td style="padding:7px 10px;white-space:nowrap">${fmtDate(l.data)}</td>
+          <td style="padding:7px 10px;font-weight:600">${l.fornecedor}</td>
+          <td style="padding:7px 10px;color:var(--text2)">${l.regiao||'—'}</td>
+          <td style="padding:7px 10px">${fmtBRL(l.latas_processadas,0)}</td>
+          <td style="padding:7px 10px">${fmtBRL(l.litros_extraidos,1)} L</td>
+          <td style="padding:7px 10px;font-weight:700;color:${Number(l.rendimento_l_lata)>=8?'var(--green)':'var(--yellow)'}">${Number(l.rendimento_l_lata||0).toFixed(2)}</td>
+          <td style="padding:7px 10px">${l.solidos_totais||'—'}</td>
+          <td style="padding:7px 10px">${l.marca||'—'}</td>
+          <td style="padding:7px 10px;font-size:11px">${l.lote_produto||'—'}</td>
+          <td style="padding:7px 10px;font-weight:700;color:${Number(l.custo_por_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${Number(l.custo_por_litro||0).toFixed(4)}</td>
+          <td style="padding:7px 10px">R$ ${fmtBRL(l.total_estimado)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div></div>` : '';
+
+    const periodoStr = fmtDate(inicio)+' a '+fmtDate(fim);
+    el.innerHTML = `
+      <div id="print-area">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+          <div>
+            <h2 style="font-size:20px;font-weight:700;color:var(--purple);margin:0">Relatório de Produção</h2>
+            <div style="font-size:13px;color:var(--text2);margin-top:2px">${periodoStr} · Amazon Polpas</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3)">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+        </div>
+        ${kpis}${tForn}${tDia}${tLotes}
+      </div>`;
+  } catch(e) { el.innerHTML = '<div class="ls">Erro: '+e.message+'</div>'; }
+}
+
+
 async function loadPeriodo(){
   const ini=document.getElementById('r6ini')?.value,fim=document.getElementById('r6fim')?.value||ini
   const el=document.getElementById('r6periodo');if(!ini){el.innerHTML='';return}
