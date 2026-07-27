@@ -126,29 +126,36 @@ router.get('/saida/:lote_id', autenticar, async (req, res) => {
   }
 })
 
-// GET /pesagens/comparativo?data=2025-05-20
+// GET /pesagens/comparativo?data=2025-05-20  (data opcional)
 router.get('/comparativo', autenticar, async (req, res) => {
-  const data = req.query.data || new Date().toISOString().split('T')[0]
+  const data = req.query.data || null
   try {
+    const params = data ? [data] : []
+    const whereClause = data ? 'WHERE DATE(l.data_operacao) = $1' : 'WHERE pc.id IS NOT NULL'
     const { rows } = await pool.query(
       `SELECT
          f.nome AS fornecedor,
          l.codigo AS lote,
+         l.data_operacao,
          pc.peso_bruto_kg,
          ps.peso_saida_kg,
-         pc.peso_bruto_kg - ps.peso_saida_kg AS peso_liquido_kg,
-         ps.divergencia_kg
+         CASE WHEN pc.peso_bruto_kg IS NOT NULL AND ps.peso_saida_kg IS NOT NULL
+              THEN pc.peso_bruto_kg - ps.peso_saida_kg ELSE NULL END AS peso_liquido_kg,
+         pc.placa_veiculo,
+         pc.hora_chegada,
+         ps.hora_saida
        FROM lotes l
        JOIN fornecedores f ON f.id = l.fornecedor_id
        LEFT JOIN pesagens_chegada pc ON pc.lote_id = l.id
-       LEFT JOIN pesagens_saida   ps ON ps.lote_id = l.id
-       WHERE l.data_operacao = $1
-       ORDER BY pc.hora_chegada`,
-      [data]
+       LEFT JOIN pesagens_saida ps ON ps.lote_id = l.id
+       ${whereClause}
+       ORDER BY l.data_operacao DESC, f.nome`,
+      params
     )
     res.json(rows)
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao gerar comparativo.' })
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao buscar pesagens.' })
   }
 })
 
