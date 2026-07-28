@@ -99,4 +99,19 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
   }
 })
 
+// PUT /recepcoes/:lote_id — edição de recepção (gerente)
+router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
+  const { qtd_latas_recebidas, condicao_fruto } = req.body
+  try {
+    const { rows } = await pool.query(
+      `UPDATE recepcoes SET qtd_latas_recebidas=$1, condicao_fruto=$2 WHERE lote_id=$3 RETURNING *`,
+      [qtd_latas_recebidas, condicao_fruto, req.params.lote_id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Recepção não encontrada.' })
+    res.json(rows[0])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar recepção.' })
+  }
+})
+
 module.exports = router
