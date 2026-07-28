@@ -159,4 +159,34 @@ router.get('/comparativo', autenticar, async (req, res) => {
   }
 })
 
+// PUT /pesagens/chegada/:lote_id — edição (gerente)
+router.put('/chegada/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
+  const { peso_bruto_kg, placa_veiculo } = req.body
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pesagens_chegada SET peso_bruto_kg=$1, placa_veiculo=$2 WHERE lote_id=$3 RETURNING *`,
+      [peso_bruto_kg, placa_veiculo, req.params.lote_id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Pesagem de chegada não encontrada.' })
+    res.json(rows[0])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar pesagem de chegada.' })
+  }
+})
+
+// PUT /pesagens/saida/:lote_id — edição (gerente)
+router.put('/saida/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
+  const { peso_saida_kg } = req.body
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pesagens_saida SET peso_saida_kg=$1 WHERE lote_id=$2 RETURNING *`,
+      [peso_saida_kg, req.params.lote_id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Pesagem de saída não encontrada.' })
+    res.json(rows[0])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao atualizar pesagem de saída.' })
+  }
+})
+
 module.exports = router
