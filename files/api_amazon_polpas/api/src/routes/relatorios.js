@@ -172,12 +172,14 @@ router.get('/periodo', autenticar, async (req, res) => {
         ps.peso_saida_kg,
         (COALESCE(pc.peso_bruto_kg,0) - COALESCE(ps.peso_saida_kg,0)) AS peso_liquido_kg,
         r.qtd_latas_recebidas AS latas_recebidas,
+        r.condicao_fruto,
         d.latas_processadas,
         d.litros_extraidos,
         d.rendimento_l_lata,
         d.solidos_totais,
         d.marca,
         d.lote_produto,
+        d.operador_nome,
         CASE WHEN d.litros_extraidos > 0 THEN ROUND(c.total_estimado::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
       FROM lotes l
       JOIN fornecedores f ON f.id = l.fornecedor_id
