@@ -366,6 +366,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="fg" style="min-width:160px"><label class="fl">Data fim</label><input class="fi" type="date" id="r6fim"></div>
     <button class="btn btn-p" onclick="gerarRelatorio6()" style="padding:10px 20px">Gerar relatório</button>
   </div>
+  <div id="r6filtros"></div>
   <div id="r6resultado"></div>
 </div>
 
@@ -716,7 +717,24 @@ async function gerarRelatorio6(){
   el.innerHTML='<div class="ls">Gerando relatório...</div>';
   try{
     const d=await req('GET','/relatorios/periodo?inicio='+inicio+'&fim='+fim);
-    const r=d.resumo;
+    window.__r6lotes=d.lotes_detalhado||[];
+    montarFiltrosR6();
+  }catch(e){el.innerHTML='<div class="ls">Erro: '+e.message+'</div>';return}
+  renderRelatorio6();
+}
+function limparFiltrosR6(){['f6forn','f6regiao','f6unidade','f6cond','f6op'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});renderRelatorio6();}
+function montarFiltrosR6(){const cont=document.getElementById('r6filtros');if(!cont)return;const lotes=window.__r6lotes||[];const cL={otima:'Ótima',boa:'Boa',regular:'Regular',ruim:'Ruim'};const uniq=c=>[...new Set(lotes.map(l=>l[c]).filter(v=>v!=null&&String(v).trim()!==''))].sort();const esc=v=>String(v).replace(/"/g,'&quot;');const sel=(id,label,vals,fn)=>`<div class="fg" style="min-width:150px"><label class="fl">${label}</label><select class="fi" id="${id}" onchange="renderRelatorio6()"><option value="">Todos</option>${vals.map(v=>`<option value="${esc(v)}">${fn?fn(v):v}</option>`).join('')}</select></div>`;cont.innerHTML=`<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end"><div style="font-size:12px;font-weight:700;color:var(--purple);width:100%;margin-bottom:2px">🔎 Filtros</div>${sel('f6forn','Fornecedor',uniq('fornecedor'))}${sel('f6regiao','Região',uniq('regiao'))}${sel('f6unidade','Unidade Fabril',uniq('unidade_fabril'),v=>fmtUnidade(v))}${sel('f6cond','Condição do Fruto',uniq('condicao_fruto'),v=>cL[v]||v)}${sel('f6op','Operador',uniq('operador_nome'))}<button class="btn btn-gh" onclick="limparFiltrosR6()" style="font-size:12px;padding:8px 14px">Limpar filtros</button></div>`;}
+function renderRelatorio6(){
+  const el=document.getElementById('r6resultado');
+  const inicio=document.getElementById('r6inicio').value;
+  const fim=document.getElementById('r6fim').value;
+  const gf=id=>{const e=document.getElementById(id);return e?e.value:''};
+  const ff={fornecedor:gf('f6forn'),regiao:gf('f6regiao'),unidade_fabril:gf('f6unidade'),condicao_fruto:gf('f6cond'),operador_nome:gf('f6op')};
+  const d={lotes_detalhado:(window.__r6lotes||[]).filter(l=>{for(const k in ff){if(ff[k]!==''&&String(l[k]==null?'':l[k])!==ff[k])return false;}return true;})};
+  try{
+    const _dl=d.lotes_detalhado.filter(l=>l.litros_extraidos);
+    const _tl=_dl.reduce((s,l)=>s+Number(l.latas_processadas||0),0),_tL=_dl.reduce((s,l)=>s+Number(l.litros_extraidos||0),0),_tp=_dl.reduce((s,l)=>s+Number(l.total_estimado||0),0);
+    const r={total_lotes:d.lotes_detalhado.length,total_lotes_despolpados:_dl.length,total_latas:_tl,total_litros:Number(_tL.toFixed(1)),total_pago:Number(_tp.toFixed(2)),custo_medio_litro:_tL>0?Number((_tp/_tL).toFixed(4)):0,rendimento_medio_lata:_tl>0?Number((_tL/_tl).toFixed(2)):0};
     const fmtBRL=(v,dec=2)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
     const fmtDate=s=>{if(!s)return'—';const dt=new Date(String(s).slice(0,10)+'T12:00:00');return isNaN(dt)?'—':dt.toLocaleDateString('pt-BR')};
     const lotesDesp=d.lotes_detalhado.filter(l=>l.litros_extraidos);
