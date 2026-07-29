@@ -104,4 +104,20 @@ router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
   }
 })
 
+// PUT /compras/:lote_id/ajuste — ajusta o total pago do lote p/ bater com a NF (gerente)
+router.put('/:lote_id/ajuste', autenticar, autorizar('gerente'), async (req, res) => {
+  let { total_ajustado } = req.body
+  if (total_ajustado === '' || total_ajustado === undefined) total_ajustado = null
+  try {
+    const { rows } = await pool.query(
+      `UPDATE compras SET total_ajustado=$1 WHERE lote_id=$2 RETURNING lote_id, total_estimado, total_ajustado`,
+      [total_ajustado, req.params.lote_id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Compra não encontrada.' })
+    res.json(rows[0])
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao ajustar total.' })
+  }
+})
+
 module.exports = router
