@@ -159,13 +159,16 @@ router.get('/periodo', autenticar, async (req, res) => {
     const { rows: lotes } = await pool.query(`
       SELECT
         f.nome AS fornecedor,
+        l.id AS lote_id,
         c.regiao,
         c.unidade_fabril,
         DATE(l.data_operacao) AS data,
         l.status,
         c.qtd_latas_prevista,
         c.preco_por_lata,
-        c.total_estimado,
+        COALESCE(c.total_ajustado, c.total_estimado) AS total_estimado,
+        c.total_ajustado,
+        c.total_estimado AS total_computado,
         c.tipo_frete,
         c.valor_frete,
         pc.peso_bruto_kg,
@@ -180,7 +183,7 @@ router.get('/periodo', autenticar, async (req, res) => {
         d.marca,
         d.lote_produto,
         d.operador_nome,
-        CASE WHEN d.litros_extraidos > 0 THEN ROUND(c.total_estimado::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
+        CASE WHEN d.litros_extraidos > 0 THEN ROUND(COALESCE(c.total_ajustado, c.total_estimado)::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
       FROM lotes l
       JOIN fornecedores f ON f.id = l.fornecedor_id
       LEFT JOIN compras c ON c.lote_id = l.id
