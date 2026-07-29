@@ -94,7 +94,9 @@ router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
   const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril } = req.body
   try {
     const { rows } = await pool.query(
-      `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, regiao=$3, tipo_frete=$4, valor_frete=$5, unidade_fabril=$6 WHERE lote_id=$7 RETURNING *`,
+      `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, regiao=$3, tipo_frete=$4, valor_frete=$5, unidade_fabril=$6,
+              total_ajustado = CASE WHEN qtd_latas_prevista IS DISTINCT FROM $1::int OR ROUND(preco_por_lata,2) IS DISTINCT FROM ROUND($2::numeric,2) THEN NULL ELSE total_ajustado END
+       WHERE lote_id=$7 RETURNING *`,
       [qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Compra não encontrada.' })
