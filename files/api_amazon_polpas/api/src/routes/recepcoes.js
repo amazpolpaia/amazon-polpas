@@ -47,6 +47,34 @@ router.post('/', autenticar, autorizar('gerente', 'recepcao'), async (req, res) 
   }
 })
 
+// GET /recepcoes/resumo-dia — lotes em descarga (de qualquer data), com status de recepção
+router.get('/resumo-dia', autenticar, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+         f.nome AS fornecedor,
+         l.codigo AS lote,
+         c.qtd_latas_prevista,
+         r.qtd_latas_recebidas,
+         r.qtd_latas_recebidas - c.qtd_latas_prevista AS divergencia,
+         r.condicao_fruto,
+         l.status
+       FROM lotes l
+       JOIN fornecedores f ON f.id = l.fornecedor_id
+       LEFT JOIN compras   c ON c.lote_id = l.id
+       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       WHERE l.status = 'em_descarga'
+       ORDER BY r.hora_inicio NULLS LAST`,
+      []
+    )
+    const totalPrevistas  = rows.reduce((s, r) => s + (Number(r.qtd_latas_prevista) || 0), 0)
+    const totalRecebidas  = rows.reduce((s, r) => s + (Number(r.qtd_latas_recebidas) || 0), 0)
+    res.json({ itens: rows, total_previstas: totalPrevistas, total_recebidas: totalRecebidas })
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao gerar resumo.' })
+  }
+})
+
 // GET /recepcoes/:lote_id
 router.get('/:lote_id', autenticar, async (req, res) => {
   try {
@@ -67,35 +95,6 @@ router.get('/:lote_id', autenticar, async (req, res) => {
     res.json(rows[0])
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar recepção.' })
-  }
-})
-
-// GET /recepcoes/resumo-dia?data=2025-05-20
-router.get('/resumo-dia', autenticar, async (req, res) => {
-  const data = req.query.data || new Date().toISOString().split('T')[0]
-  try {
-    const { rows } = await pool.query(
-      `SELECT
-         f.nome AS fornecedor,
-         l.codigo AS lote,
-         c.qtd_latas_prevista,
-         r.qtd_latas_recebidas,
-         r.qtd_latas_recebidas - c.qtd_latas_prevista AS divergencia,
-         r.condicao_fruto,
-         l.status
-       FROM lotes l
-       JOIN fornecedores f ON f.id = l.fornecedor_id
-       LEFT JOIN compras   c ON c.lote_id = l.id
-       LEFT JOIN recepcoes r ON r.lote_id = l.id
-       WHERE l.data_operacao = $1
-       ORDER BY r.hora_inicio NULLS LAST`,
-      [data]
-    )
-    const totalPrevistas  = rows.reduce((s, r) => s + (Number(r.qtd_latas_prevista) || 0), 0)
-    const totalRecebidas  = rows.reduce((s, r) => s + (Number(r.qtd_latas_recebidas) || 0), 0)
-    res.json({ itens: rows, total_previstas: totalPrevistas, total_recebidas: totalRecebidas })
-  } catch (err) {
-    res.status(500).json({ erro: 'Erro ao gerar resumo.' })
   }
 })
 
