@@ -21,13 +21,14 @@ async function gerarCodigo(fornecedor_id, data) {
 
 // GET /lotes?data=2025-05-20&fornecedor_id=1&status=aberto
 router.get('/', autenticar, async (req, res) => {
-  const { data, fornecedor_id, status } = req.query
+  const { data, fornecedor_id, status, pendente } = req.query
   let query = 'SELECT * FROM vw_lotes_resumo WHERE 1=1'
   const params = []
 
   if (data) { params.push(data); query += ` AND data_operacao = $${params.length}` }
   if (fornecedor_id) { params.push(fornecedor_id); query += ` AND fornecedor_id = $${params.length}` }
-  if (status) { params.push(status); query += ` AND status = $${params.length}` }
+  if (status) { params.push(status); query += ` AND status = ${params.length}` }
+  if (pendente === 'recepcao') { query += ' AND lote_id NOT IN (SELECT lote_id FROM recepcoes)' }
 
   query += ' ORDER BY data_operacao DESC, hora_chegada DESC'
 
