@@ -27,7 +27,7 @@ router.get('/', autenticar, async (req, res) => {
 
   if (data) { params.push(data); query += ` AND data_operacao = $${params.length}` }
   if (fornecedor_id) { params.push(fornecedor_id); query += ` AND fornecedor_id = $${params.length}` }
-  if (status) { params.push(status); query += ` AND status = ${params.length}` }
+  if (status) { params.push(status); query += ` AND status = $${params.length}` }
   if (pendente === 'recepcao') { query += ' AND lote_id NOT IN (SELECT lote_id FROM recepcoes)' }
 
   query += ' ORDER BY data_operacao DESC, hora_chegada DESC'
