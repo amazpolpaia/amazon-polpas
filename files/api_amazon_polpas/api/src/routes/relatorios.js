@@ -160,6 +160,7 @@ router.get('/periodo', autenticar, async (req, res) => {
       SELECT
         f.nome AS fornecedor,
         l.id AS lote_id,
+        l.codigo,
         c.regiao,
         c.unidade_fabril,
         DATE(l.data_operacao) AS data,
