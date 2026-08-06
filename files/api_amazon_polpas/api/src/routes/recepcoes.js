@@ -58,6 +58,7 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
          r.qtd_latas_recebidas,
          r.qtd_latas_recebidas - c.qtd_latas_prevista AS divergencia,
          r.condicao_fruto,
+         r.observacoes,
          l.status
        FROM lotes l
        JOIN fornecedores f ON f.id = l.fornecedor_id
