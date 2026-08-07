@@ -177,6 +177,7 @@ router.get('/periodo', autenticar, async (req, res) => {
         (COALESCE(pc.peso_bruto_kg,0) - COALESCE(ps.peso_saida_kg,0)) AS peso_liquido_kg,
         r.qtd_latas_recebidas AS latas_recebidas,
         r.condicao_fruto,
+        r.observacoes,
         d.latas_processadas,
         d.litros_extraidos,
         d.rendimento_l_lata,
