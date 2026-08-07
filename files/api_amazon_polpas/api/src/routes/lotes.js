@@ -3,6 +3,10 @@ const pool   = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
 const { respostaComValores } = require('../utils/valores')
 
+// Mesma definição da view vw_lotes_resumo, porém SEM o LIMIT 100 (a view original
+// tem um LIMIT que restringe as listas a 100 linhas arbitrárias). Apenas leitura.
+const VW_LOTES = `(SELECT l.id AS lote_id, l.codigo, l.data_operacao, l.status, f.nome AS fornecedor, f.municipio, c.qtd_latas_prevista, c.preco_por_lata, c.total_estimado, pc.hora_chegada, pc.peso_bruto_kg, pc.placa_veiculo, r.qtd_latas_recebidas, r.condicao_fruto, ps.hora_saida, ps.peso_saida_kg, ps.peso_liquido_kg, d.litros_extraidos, d.rendimento_l_lata, d.turno, rd.custo_por_litro, rd.total_pago, c.regiao, c.tipo_frete, c.valor_frete, c.unidade_fabril FROM lotes l JOIN fornecedores f ON f.id = l.fornecedor_id LEFT JOIN compras c ON c.lote_id = l.id LEFT JOIN pesagens_chegada pc ON pc.lote_id = l.id LEFT JOIN recepcoes r ON r.lote_id = l.id LEFT JOIN pesagens_saida ps ON ps.lote_id = l.id LEFT JOIN despolpamentos d ON d.lote_id = l.id LEFT JOIN rendimentos rd ON rd.lote_id = l.id) AS vw`
+
 // Gera código do lote: LOTE-20250520-SL-001
 async function gerarCodigo(fornecedor_id, data) {
   const { rows: [f] } = await pool.query(
@@ -22,7 +26,7 @@ async function gerarCodigo(fornecedor_id, data) {
 // GET /lotes?data=2025-05-20&fornecedor_id=1&status=aberto
 router.get('/', autenticar, async (req, res) => {
   const { data, fornecedor_id, status, pendente } = req.query
-  let query = 'SELECT * FROM vw_lotes_resumo WHERE 1=1'
+  let query = 'SELECT * FROM ' + VW_LOTES + ' WHERE 1=1'
   const params = []
 
   if (data) { params.push(data); query += ` AND data_operacao = $${params.length}` }
@@ -44,7 +48,7 @@ router.get('/', autenticar, async (req, res) => {
 router.get('/:id', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM vw_lotes_resumo WHERE lote_id = $1',
+      'SELECT * FROM ' + VW_LOTES + ' WHERE lote_id = $1',
       [req.params.id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Lote não encontrado.' })
