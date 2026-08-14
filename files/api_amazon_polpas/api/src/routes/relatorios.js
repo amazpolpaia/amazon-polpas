@@ -42,7 +42,7 @@ router.get('/', autenticar, async (req, res) => {
          rd.latas_recebidas, rd.preco_por_lata, rd.total_pago,
          rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro,
          ps.peso_liquido_kg,
-         c.tipo_frete, c.valor_frete, c.regiao, c.unidade_fabril
+         c.tipo_frete, c.valor_frete, c.total_ajustado, c.regiao, c.unidade_fabril
        FROM rendimentos rd
        JOIN fornecedores f ON f.id = rd.fornecedor_id
        LEFT JOIN pesagens_saida ps ON ps.lote_id = rd.lote_id
@@ -51,6 +51,16 @@ router.get('/', autenticar, async (req, res) => {
        ORDER BY rd.custo_por_litro ASC`,
       [data]
     )
+
+    // Recompoe total e custo/litro incluindo frete (colunas geradas nao o contemplam)
+    previa.forEach(r => {
+      const bruto = r.total_ajustado != null
+        ? Number(r.total_ajustado)
+        : Number(r.latas_recebidas || 0) * Number(r.preco_por_lata || 0) + Number(r.valor_frete || 0)
+      r.total_pago = bruto.toFixed(2)
+      r.custo_por_litro = Number(r.litros_extraidos) > 0
+        ? (bruto / Number(r.litros_extraidos)).toFixed(4) : null
+    })
 
     // Calcula média ponderada da prévia
     const totalPago = previa.reduce((s, r) => s + Number(r.total_pago || 0), 0)
@@ -167,7 +177,7 @@ router.get('/periodo', autenticar, async (req, res) => {
         l.status,
         c.qtd_latas_prevista,
         c.preco_por_lata,
-        COALESCE(c.total_ajustado, c.total_estimado) AS total_estimado,
+        COALESCE(c.total_ajustado, COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata + COALESCE(c.valor_frete,0)) AS total_estimado,
         c.total_ajustado,
         c.total_estimado AS total_computado,
         c.tipo_frete,
@@ -185,7 +195,7 @@ router.get('/periodo', autenticar, async (req, res) => {
         d.marca,
         d.lote_produto,
         d.operador_nome,
-        CASE WHEN d.litros_extraidos > 0 THEN ROUND(COALESCE(c.total_ajustado, c.total_estimado)::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
+        CASE WHEN d.litros_extraidos > 0 THEN ROUND(COALESCE(c.total_ajustado, COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata + COALESCE(c.valor_frete,0))::numeric / d.litros_extraidos::numeric, 4) END AS custo_por_litro
       FROM lotes l
       JOIN fornecedores f ON f.id = l.fornecedor_id
       LEFT JOIN compras c ON c.lote_id = l.id
@@ -199,7 +209,7 @@ router.get('/periodo', autenticar, async (req, res) => {
 
     // 2. Totais gerais
     const lotesFin = lotes.filter(l => l.litros_extraidos)
-    const totalLatas = lotesFin.reduce((s,l)=>s+Number(l.latas_processadas||0),0)
+    const totalLatas = lotesFin.reduce((s,l)=>s+Number(l.latas_recebidas||l.latas_processadas||0),0)
     const totalLitros = lotesFin.reduce((s,l)=>s+Number(l.litros_extraidos||0),0)
     const totalPago = lotesFin.reduce((s,l)=>s+Number(l.total_estimado||0),0)
     const totalPesoLiq = lotes.reduce((s,l)=>s+Number(l.peso_liquido_kg||0),0)
@@ -212,7 +222,7 @@ router.get('/periodo', autenticar, async (req, res) => {
       if(!porForn[l.fornecedor]) porForn[l.fornecedor]={fornecedor:l.fornecedor,lotes:0,latas:0,litros:0,pago:0,pesoLiq:0,regioes:new Set()}
       const f=porForn[l.fornecedor]
       f.lotes++
-      f.latas+=Number(l.latas_processadas||0)
+      f.latas+=Number(l.latas_recebidas||l.latas_processadas||0)
       f.litros+=Number(l.litros_extraidos||0)
       f.pago+=Number(l.total_estimado||0)
       f.pesoLiq+=Number(l.peso_liquido_kg||0)
@@ -231,7 +241,7 @@ router.get('/periodo', autenticar, async (req, res) => {
       const d=String(l.data)
       if(!porDia[d]) porDia[d]={data:d,lotes:0,latas:0,litros:0,pago:0}
       porDia[d].lotes++
-      porDia[d].latas+=Number(l.latas_processadas||0)
+      porDia[d].latas+=Number(l.latas_recebidas||l.latas_processadas||0)
       porDia[d].litros+=Number(l.litros_extraidos||0)
       porDia[d].pago+=Number(l.total_estimado||0)
     }
