@@ -7,13 +7,26 @@ const { respostaComValores } = require('../utils/valores')
 
 // POST /producao/despolpamento
 router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
-  const {
+  let {
     lote_id, latas_processadas, litros_extraidos,
     turno, operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, solidos_totais, marca
   } = req.body
 
-  if (!lote_id || !latas_processadas || !litros_extraidos)
-    return res.status(400).json({ erro: 'lote_id, latas_processadas e litros_extraidos são obrigatórios.' })
+  if (!lote_id || !litros_extraidos)
+    return res.status(400).json({ erro: 'lote_id e litros_extraidos são obrigatórios.' })
+
+  // Latas processadas vem da afericao da recepcao (etapa 3) quando nao informado
+  let latas = latas_processadas
+  if (!latas) {
+    const { rows: [rec] } = await pool.query(
+      'SELECT qtd_latas_recebidas FROM recepcoes WHERE lote_id=$1', [lote_id]
+    )
+    latas = rec && rec.qtd_latas_recebidas
+    if (!latas) return res.status(400).json({
+      erro: 'Informe as latas processadas ou registre a recepção do lote antes.'
+    })
+  }
+  latas_processadas = latas
 
   if (litros_extraidos <= 0 || latas_processadas <= 0)
     return res.status(400).json({ erro: 'Valores devem ser maiores que zero.' })
@@ -84,7 +97,23 @@ router.get('/historico', autenticar, async (req, res) => {
   }
 })
 
-// ─── RENDIMENTO (módulo 6) ───────────────────────────────────
+// ─── RENDIMENTO (módulo 6) ─────────────────────────────────
+
+// Recompoe total pago e custo/litro somando o frete.
+// As colunas geradas em `rendimentos` nao contemplam frete; o calculo passa a
+// ser feito aqui. Se `total_ajustado` estiver preenchido ele ja inclui o frete.
+function comFrete(rend, compra = {}) {
+  const bruto = compra.total_ajustado != null
+    ? Number(compra.total_ajustado)
+    : Number(rend.latas_recebidas || 0) * Number(rend.preco_por_lata || 0) + Number(compra.valor_frete || 0)
+  const litros = Number(rend.litros_extraidos || 0)
+  return {
+    ...rend,
+    valor_frete: Number(compra.valor_frete || 0),
+    total_pago: bruto.toFixed(2),
+    custo_por_litro: litros > 0 ? (bruto / litros).toFixed(4) : null
+  }
+}──
 
 // POST /producao/rendimento
 // Consolida dados do lote e calcula custo/litro
@@ -99,6 +128,8 @@ router.post('/rendimento', autenticar, autorizar('gerente', 'producao'), async (
          l.fornecedor_id,
          l.data_operacao,
          c.preco_por_lata,
+         c.valor_frete,
+         c.total_ajustado,
          r.qtd_latas_recebidas    AS latas_recebidas,
          d.litros_extraidos,
          d.rendimento_l_lata
@@ -135,7 +166,7 @@ router.post('/rendimento', autenticar, autorizar('gerente', 'producao'), async (
       [lote_id]
     )
 
-    res.status(201).json(rows[0])
+    res.status(201).json(comFrete(rows[0], dados))
   } catch (err) {
     if (err.code === '23505')
       return res.status(409).json({ erro: 'Rendimento já calculado para este lote.' })
@@ -147,14 +178,15 @@ router.post('/rendimento', autenticar, autorizar('gerente', 'producao'), async (
 router.get('/rendimento/:lote_id', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT rd.*, f.nome AS fornecedor
+      `SELECT rd.*, f.nome AS fornecedor, c.valor_frete, c.total_ajustado
        FROM rendimentos rd
        JOIN fornecedores f ON f.id = rd.fornecedor_id
+       LEFT JOIN compras c ON c.lote_id = rd.lote_id
        WHERE rd.lote_id=$1`,
       [req.params.lote_id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Rendimento não calculado ainda.' })
-    respostaComValores(req, res, rows[0])
+    respostaComValores(req, res, comFrete(rows[0], rows[0]))
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao buscar rendimento.' })
   }
@@ -167,14 +199,18 @@ router.get('/comparativo-dia', autenticar, async (req, res) => {
     const { rows } = await pool.query(
       `SELECT f.nome AS fornecedor,
               rd.latas_recebidas, rd.preco_por_lata, rd.total_pago,
-              rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro
+              rd.litros_extraidos, rd.rendimento_l_lata, rd.custo_por_litro,
+              c.valor_frete, c.total_ajustado
        FROM rendimentos rd
        JOIN fornecedores f ON f.id = rd.fornecedor_id
+       LEFT JOIN compras c ON c.lote_id = rd.lote_id
        WHERE rd.data_operacao=$1
        ORDER BY rd.custo_por_litro ASC`,
       [data]
     )
-    respostaComValores(req, res, rows)
+    const comCusto = rows.map(r => comFrete(r, r))
+    comCusto.sort((a, b) => Number(a.custo_por_litro) - Number(b.custo_por_litro))
+    respostaComValores(req, res, comCusto)
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao gerar comparativo.' })
   }
