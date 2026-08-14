@@ -29,7 +29,8 @@ router.get('/', autenticar, async (req, res) => {
 router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res) => {
   const {
     lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-    qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes
+    qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes,
+    placa, frete_no_saldo
   } = req.body
 
   if (!lote_id || !fornecedor_id || !qtd_latas_prevista || !preco_por_lata)
@@ -39,14 +40,16 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
     const { rows } = await pool.query(
       `INSERT INTO compras
         (lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
-         qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, observacoes, registrado_por,
+         placa, frete_no_saldo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING *`,
       [
         lote_id, fornecedor_id,
         data_negociacao || new Date().toISOString().split('T')[0],
         data_entrega_prev, qtd_latas_prevista, preco_por_lata,
-        regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id
+        regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id,
+        placa ? String(placa).toUpperCase().trim() : null, !!frete_no_saldo
       ]
     )
     res.status(201).json(rows[0])
@@ -91,13 +94,16 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
 
 // PUT /compras/:lote_id — edição de compra (gerente)
 router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
-  const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril } = req.body
+  const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, placa, frete_no_saldo } = req.body
   try {
     const { rows } = await pool.query(
       `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, regiao=$3, tipo_frete=$4, valor_frete=$5, unidade_fabril=$6,
+              placa=$8, frete_no_saldo=COALESCE($9, frete_no_saldo),
               total_ajustado = CASE WHEN qtd_latas_prevista IS DISTINCT FROM $1::int OR ROUND(preco_por_lata,2) IS DISTINCT FROM ROUND($2::numeric,2) THEN NULL ELSE total_ajustado END
        WHERE lote_id=$7 RETURNING *`,
-      [qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id]
+      [qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
+       placa ? String(placa).toUpperCase().trim() : null,
+       frete_no_saldo === undefined ? null : !!frete_no_saldo]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Compra não encontrada.' })
     res.json(rows[0])
