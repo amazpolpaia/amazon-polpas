@@ -2,7 +2,7 @@ const router = require('express').Router()
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const pool = require('../db/pool')
-const { autenticar, autorizarGerenciaUsuarios, podeGerenciarUsuarios } = require('../middleware/auth')
+const { autenticar, autorizarGerenciaUsuarios, podeGerenciarUsuarios, podeVerFinanceiro } = require('../middleware/auth')
 
 function payloadToken(usuario) {
   return {
@@ -12,6 +12,7 @@ function payloadToken(usuario) {
     perfil: usuario.perfil,
     ocultar_valores: !!usuario.ocultar_valores,
     pode_gerenciar_usuarios: podeGerenciarUsuarios(usuario),
+    pode_ver_financeiro: podeVerFinanceiro(usuario),
   }
 }
 
@@ -24,6 +25,7 @@ function respostaUsuario(usuario) {
     ativo: usuario.ativo,
     ocultar_valores: !!usuario.ocultar_valores,
     pode_gerenciar_usuarios: podeGerenciarUsuarios(usuario),
+    pode_ver_financeiro: podeVerFinanceiro(usuario),
     ultimo_acesso: usuario.ultimo_acesso,
   }
 }
@@ -47,6 +49,7 @@ router.post('/login', async (req, res) => {
         `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo,
                 COALESCE(u.ocultar_valores, FALSE) AS ocultar_valores,
                 COALESCE(u.pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
+                COALESCE(u.pode_ver_financeiro, FALSE) AS pode_ver_financeiro,
                 p.nome AS perfil
          FROM usuarios u
          JOIN perfis p ON p.id = u.perfil_id
@@ -57,7 +60,7 @@ router.post('/login', async (req, res) => {
       if (dbErr.code !== '42703') throw dbErr
       ;({ rows } = await pool.query(
         `SELECT u.id, u.nome, u.email, u.senha_hash, u.ativo,
-                FALSE AS ocultar_valores, FALSE AS pode_gerenciar_usuarios,
+                FALSE AS ocultar_valores, FALSE AS pode_gerenciar_usuarios, FALSE AS pode_ver_financeiro,
                 p.nome AS perfil
          FROM usuarios u
          JOIN perfis p ON p.id = u.perfil_id
@@ -121,6 +124,7 @@ router.get('/usuarios', autenticar, autorizarGerenciaUsuarios, async (_req, res)
       `SELECT u.id, u.nome, u.email, u.ativo, u.ultimo_acesso,
               COALESCE(u.ocultar_valores, FALSE) AS ocultar_valores,
               COALESCE(u.pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
+              COALESCE(u.pode_ver_financeiro, FALSE) AS pode_ver_financeiro,
               p.id AS perfil_id, p.nome AS perfil
        FROM usuarios u
        JOIN perfis p ON p.id = u.perfil_id
@@ -130,6 +134,7 @@ router.get('/usuarios', autenticar, autorizarGerenciaUsuarios, async (_req, res)
       rows.map((u) => ({
         ...u,
         pode_gerenciar_usuarios: podeGerenciarUsuarios(u),
+        pode_ver_financeiro: podeVerFinanceiro(u),
       }))
     )
   } catch (err) {
@@ -147,6 +152,7 @@ router.post('/usuarios', autenticar, autorizarGerenciaUsuarios, async (req, res)
     perfil_id,
     ocultar_valores = false,
     pode_gerenciar_usuarios = false,
+    pode_ver_financeiro = false,
   } = req.body
 
   if (!nome || !email || !senha || !perfil_id)
@@ -156,11 +162,12 @@ router.post('/usuarios', autenticar, autorizarGerenciaUsuarios, async (req, res)
     const hash = await bcrypt.hash(senha, 10)
     const { rows } = await pool.query(
       `INSERT INTO usuarios
-         (nome, email, senha_hash, perfil_id, ocultar_valores, pode_gerenciar_usuarios)
-       VALUES ($1, $2, $3, $4, $5, $6)
+         (nome, email, senha_hash, perfil_id, ocultar_valores, pode_gerenciar_usuarios, pode_ver_financeiro)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, nome, email, ativo,
                  COALESCE(ocultar_valores, FALSE) AS ocultar_valores,
-                 COALESCE(pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios`,
+                 COALESCE(pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
+                 COALESCE(pode_ver_financeiro, FALSE) AS pode_ver_financeiro`,
       [
         nome,
         email.toLowerCase(),
@@ -168,6 +175,7 @@ router.post('/usuarios', autenticar, autorizarGerenciaUsuarios, async (req, res)
         perfil_id,
         !!ocultar_valores,
         !!pode_gerenciar_usuarios,
+        !!pode_ver_financeiro,
       ]
     )
 
@@ -197,6 +205,7 @@ router.put('/usuarios/:id', autenticar, autorizarGerenciaUsuarios, async (req, r
     ativo,
     ocultar_valores,
     pode_gerenciar_usuarios,
+    pode_ver_financeiro,
   } = req.body
 
   if (!nome || !email || !perfil_id)
@@ -210,6 +219,7 @@ router.put('/usuarios/:id', autenticar, autorizarGerenciaUsuarios, async (req, r
       ativo = COALESCE($4, ativo),
       ocultar_valores = COALESCE($5, ocultar_valores),
       pode_gerenciar_usuarios = COALESCE($6, pode_gerenciar_usuarios),
+      pode_ver_financeiro = COALESCE($7, pode_ver_financeiro),
       atualizado_em = NOW()`
     const params = [
       nome,
@@ -218,6 +228,7 @@ router.put('/usuarios/:id', autenticar, autorizarGerenciaUsuarios, async (req, r
       ativo,
       ocultar_valores,
       pode_gerenciar_usuarios,
+      pode_ver_financeiro,
     ]
 
     if (senha) {
@@ -236,6 +247,7 @@ router.put('/usuarios/:id', autenticar, autorizarGerenciaUsuarios, async (req, r
       `SELECT u.id, u.nome, u.email, u.ativo, u.ultimo_acesso,
               COALESCE(u.ocultar_valores, FALSE) AS ocultar_valores,
               COALESCE(u.pode_gerenciar_usuarios, FALSE) AS pode_gerenciar_usuarios,
+              COALESCE(u.pode_ver_financeiro, FALSE) AS pode_ver_financeiro,
               p.nome AS perfil
        FROM usuarios u
        JOIN perfis p ON p.id = u.perfil_id
