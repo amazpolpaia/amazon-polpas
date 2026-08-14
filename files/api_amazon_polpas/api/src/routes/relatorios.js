@@ -209,22 +209,34 @@ router.get('/periodo', autenticar, async (req, res) => {
 
     // 2. Totais gerais
     const lotesFin = lotes.filter(l => l.litros_extraidos)
+
+    // Decomposicao materia-prima x frete.
+    // total_ajustado ja inclui o frete -> materia-prima sai por subtracao.
+    const freteDe = l => Number(l.valor_frete || 0)
+    const materiaDe = l => l.total_ajustado != null
+      ? Math.max(0, Number(l.total_ajustado) - freteDe(l))
+      : Number(l.latas_recebidas || l.qtd_latas_prevista || 0) * Number(l.preco_por_lata || 0)
     const totalLatas = lotesFin.reduce((s,l)=>s+Number(l.latas_recebidas||l.latas_processadas||0),0)
     const totalLitros = lotesFin.reduce((s,l)=>s+Number(l.litros_extraidos||0),0)
     const totalPago = lotesFin.reduce((s,l)=>s+Number(l.total_estimado||0),0)
     const totalPesoLiq = lotes.reduce((s,l)=>s+Number(l.peso_liquido_kg||0),0)
+    const totalFrete = lotesFin.reduce((s,l)=>s+freteDe(l),0)
+    const totalMateria = lotesFin.reduce((s,l)=>s+materiaDe(l),0)
+    const precoMedioLata = totalLatas>0 ? (totalMateria/totalLatas) : 0
+    const fretePorLata = totalLatas>0 ? (totalFrete/totalLatas) : 0
     const custoMedioLitro = totalLitros>0 ? (totalPago/totalLitros) : 0
     const rendMedioLata = totalLatas>0 ? (totalLitros/totalLatas) : 0
 
     // 3. Por fornecedor
     const porForn = {}
     for(const l of lotes){
-      if(!porForn[l.fornecedor]) porForn[l.fornecedor]={fornecedor:l.fornecedor,lotes:0,latas:0,litros:0,pago:0,pesoLiq:0,regioes:new Set()}
+      if(!porForn[l.fornecedor]) porForn[l.fornecedor]={fornecedor:l.fornecedor,lotes:0,latas:0,litros:0,pago:0,frete:0,pesoLiq:0,regioes:new Set()}
       const f=porForn[l.fornecedor]
       f.lotes++
       f.latas+=Number(l.latas_recebidas||l.latas_processadas||0)
       f.litros+=Number(l.litros_extraidos||0)
       f.pago+=Number(l.total_estimado||0)
+      f.frete+=freteDe(l)
       f.pesoLiq+=Number(l.peso_liquido_kg||0)
       if(l.regiao)f.regioes.add(l.regiao)
     }
@@ -232,7 +244,8 @@ router.get('/periodo', autenticar, async (req, res) => {
       ...f,
       regioes: [...f.regioes].join(', '),
       rendimento: f.latas>0?(f.litros/f.latas).toFixed(2):null,
-      custo_litro: f.litros>0?(f.pago/f.litros).toFixed(4):null
+      custo_litro: f.litros>0?(f.pago/f.litros).toFixed(4):null,
+      frete_por_lata: f.latas>0?(f.frete/f.latas).toFixed(2):null
     })).sort((a,b)=>Number(a.custo_litro)-Number(b.custo_litro))
 
     // 4. Por dia
@@ -259,6 +272,10 @@ router.get('/periodo', autenticar, async (req, res) => {
         total_latas:totalLatas,
         total_litros:Number(totalLitros.toFixed(1)),
         total_pago:Number(totalPago.toFixed(2)),
+        total_materia_prima:Number(totalMateria.toFixed(2)),
+        total_frete:Number(totalFrete.toFixed(2)),
+        preco_medio_lata:Number(precoMedioLata.toFixed(2)),
+        frete_por_lata:Number(fretePorLata.toFixed(2)),
         total_peso_liquido_kg:Number(totalPesoLiq.toFixed(1)),
         custo_medio_litro:Number(custoMedioLitro.toFixed(4)),
         rendimento_medio_lata:Number(rendMedioLata.toFixed(2))
