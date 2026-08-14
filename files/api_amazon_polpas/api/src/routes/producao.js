@@ -113,7 +113,7 @@ function comFrete(rend, compra = {}) {
     total_pago: bruto.toFixed(2),
     custo_por_litro: litros > 0 ? (bruto / litros).toFixed(4) : null
   }
-}──
+}
 
 // POST /producao/rendimento
 // Consolida dados do lote e calcula custo/litro
