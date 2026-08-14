@@ -35,6 +35,21 @@ function podeGerenciarUsuarios(usuario) {
   return !!usuario.pode_gerenciar_usuarios
 }
 
+function podeVerFinanceiro(usuario) {
+  if (!usuario) return false
+  if ((usuario.email || '').toLowerCase() === EMAIL_ADMIN_MASTER) return true
+  return !!usuario.pode_ver_financeiro
+}
+
+function autorizarFinanceiro(req, res, next) {
+  if (!podeVerFinanceiro(req.usuario)) {
+    return res.status(403).json({
+      erro: 'Acesso negado. Voce nao tem permissao para o modulo financeiro.',
+    })
+  }
+  next()
+}
+
 function autorizarGerenciaUsuarios(req, res, next) {
   if (!podeGerenciarUsuarios(req.usuario)) {
     return res.status(403).json({
@@ -49,5 +64,7 @@ module.exports = {
   autorizar,
   autorizarGerenciaUsuarios,
   podeGerenciarUsuarios,
+  autorizarFinanceiro,
+  podeVerFinanceiro,
   EMAIL_ADMIN_MASTER,
 }
