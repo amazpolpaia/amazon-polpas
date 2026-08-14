@@ -759,8 +759,8 @@ function renderRelatorio6(){
   const d={lotes_detalhado:(window.__r6lotes||[]).filter(l=>Object.keys(sel).every(cat=>!sel[cat].length||sel[cat].includes(String(l[cat]==null?'':l[cat])))&&(!_bq||String(l.codigo||'').toLowerCase().includes(_bq)||String(l.fornecedor||'').toLowerCase().includes(_bq)))};
   try{
     const _dl=d.lotes_detalhado.filter(l=>l.litros_extraidos);
-    const _tl=_dl.reduce((s,l)=>s+Number(l.latas_processadas||0),0),_tL=_dl.reduce((s,l)=>s+Number(l.litros_extraidos||0),0),_tp=_dl.reduce((s,l)=>s+Number(l.total_estimado||0),0);
-    const r={total_lotes:d.lotes_detalhado.length,total_lotes_despolpados:_dl.length,total_latas:_tl,total_litros:Number(_tL.toFixed(1)),total_pago:Number(_tp.toFixed(2)),custo_medio_litro:_tL>0?Number((_tp/_tL).toFixed(4)):0,rendimento_medio_lata:_tl>0?Number((_tL/_tl).toFixed(2)):0};
+    const _frete=l=>Number(l.valor_frete||0);const _materia=l=>l.total_ajustado!=null?Math.max(0,Number(l.total_ajustado)-_frete(l)):Number(l.latas_recebidas||l.qtd_latas_prevista||0)*Number(l.preco_por_lata||0);const _tl=_dl.reduce((s,l)=>s+Number(l.latas_recebidas||l.latas_processadas||0),0),_tL=_dl.reduce((s,l)=>s+Number(l.litros_extraidos||0),0),_tp=_dl.reduce((s,l)=>s+Number(l.total_estimado||0),0),_tf=_dl.reduce((s,l)=>s+_frete(l),0),_tm=_dl.reduce((s,l)=>s+_materia(l),0);
+    const r={total_lotes:d.lotes_detalhado.length,total_lotes_despolpados:_dl.length,total_latas:_tl,total_litros:Number(_tL.toFixed(1)),total_pago:Number(_tp.toFixed(2)),total_frete:Number(_tf.toFixed(2)),total_materia_prima:Number(_tm.toFixed(2)),preco_medio_lata:_tl>0?Number((_tm/_tl).toFixed(2)):0,frete_por_lata:_tl>0?Number((_tf/_tl).toFixed(2)):0,custo_medio_litro:_tL>0?Number((_tp/_tL).toFixed(4)):0,rendimento_medio_lata:_tl>0?Number((_tL/_tl).toFixed(2)):0};
     const fmtBRL=(v,dec=2)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});
     const fmtDate=s=>{if(!s)return'—';const dt=new Date(String(s).slice(0,10)+'T12:00:00');return isNaN(dt)?'—':dt.toLocaleDateString('pt-BR')};
     const lotesDesp=d.lotes_detalhado.filter(l=>l.litros_extraidos);
