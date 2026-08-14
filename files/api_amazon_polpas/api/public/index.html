@@ -225,6 +225,9 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <button class="sb-item" id="n8" onclick="go(8)" style="display:none"><span class="sb-num">👥</span>Usuários</button>
     <button class="sb-item" id="n9" onclick="go(9)" style="display:none"><span class="sb-num">✎</span>Editar dados</button>
     <button class="sb-item" id="n10" onclick="go(10)" style="display:none"><span class="sb-num">📅</span>Histórico</button>
+    <div class="sb-section" id="sb-fin-sec" style="display:none">Financeiro</div>
+    <button class="sb-item" id="n11" onclick="go(11)" style="display:none"><span class="sb-num">🚚</span>Frete por placa</button>
+    <button class="sb-item" id="n12" onclick="go(12)" style="display:none"><span class="sb-num">💰</span>Saldo fornecedores</button>
     <div class="sb-footer">
       <div class="sb-user">
         <div class="sb-avatar" id="savatar">--</div>
@@ -257,7 +260,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div class="fg"><label class="fl">Fornecedor</label><select class="fi" id="cf"></select></div>
       <div class="fr"><div class="fg"><label class="fl">Qtd. latas (14 kg)</label><input class="fi" type="number" id="cl" placeholder="ex: 120" oninput="calcC()"></div><div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="cp" placeholder="ex: 28.50" oninput="calcC()"></div></div>
       <div class="fr"><div class="fg"><label class="fl">Data de entrega</label><input class="fi" type="date" id="cd"></div><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="cc" placeholder="ex: Cametá"></div></div>
-      <div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="cfrete-tipo"><option value="terceiro">Terceiro</option><option value="proprio">Carro Próprio</option><option value="fornecedor">Carro Fornecedor</option><option value="outros">Outros</option></select></div><div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" id="cfrete-valor" placeholder="ex: 150.00" oninput="calcC()"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="cfrete-tipo"><option value="terceiro">Terceiro</option><option value="proprio">Carro Próprio</option><option value="fornecedor">Carro Fornecedor</option><option value="outros">Outros</option></select></div><div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" id="cfrete-valor" placeholder="ex: 150.00" oninput="calcC()"></div></div><div class="fr"><div class="fg"><label class="fl">Placa do veículo</label><input class="fi" id="cplaca" placeholder="ex: ABC1D23" style="text-transform:uppercase"></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px;margin-top:26px"><input type="checkbox" id="cfrete-saldo"> Frete entra no saldo do fornecedor</label></div></div>
       <div class="fr"><div class="fg"><label class="fl">Unidade fabril</label><select class="fi" id="cunidade" onchange="toggleUnidadeOutros('cunidade','cunidade-outros')"><option value="amazon_polpas">Amazon Polpas</option><option value="amazon_filial">Amazon Filial</option><option value="granfruto">Granfruto</option><option value="cameta">Cametá</option><option value="outros">Outros</option></select></div><div class="fg" id="cunidade-outros-wrap" style="display:none"><label class="fl">Descrever unidade</label><input class="fi" type="text" id="cunidade-outros" placeholder="Descrever..."></div></div>
       <div class="rb"><div><div class="rb-lbl">Total estimado</div><div class="rb-val" id="ctotal">R$ —</div></div><button class="btn btn-p" id="bc0" onclick="regCompra()">Registrar ordem</button></div>
     </div>
@@ -397,7 +400,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
         </select>
       </div>
       <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8ativo" checked> Usuário ativo</label></div>
-      <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8ocultar"> Ocultar valores (R$) para este usuário</label></div>
+      <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8ocultar"> Ocultar valores (R$) para este usuário</label></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="u8financeiro"> Acesso ao módulo financeiro (frete e saldos)</label></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-p" style="flex:1" onclick="salvarUsuario()">Salvar</button>
         <button class="btn btn-gh" onclick="document.getElementById('form8').style.display='none'">Cancelar</button>
@@ -446,6 +449,36 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     </div>
   </div>
   <div id="h10resultado"></div>
+</div>
+
+<div class="screen" id="s11">
+  <div class="section-header sh-duo"><div><div class="sh-title">Frete por placa</div><div class="sh-sub">Considera apenas lotes com placa informada na compra</div></div></div>
+  <div class="card" style="margin-bottom:16px;border-left:4px solid var(--green)">
+    <div class="card-title">Período</div>
+    <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label class="fl">Início</label><input class="fi" type="date" id="f11ini"></div>
+      <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label class="fl">Fim</label><input class="fi" type="date" id="f11fim"></div>
+      <button class="btn btn-p" onclick="loadS11()">Buscar</button>
+      <button class="btn" onclick="document.getElementById('f11ini').value='';document.getElementById('f11fim').value='';loadS11()">Todo o período</button>
+    </div>
+  </div>
+  <div id="f11resultado"></div>
+</div>
+
+<div class="screen" id="s12">
+  <div class="section-header sh-duo"><div><div class="sh-title">Saldo de fornecedores</div><div class="sh-sub">Contas a pagar — devido menos pago</div></div></div>
+  <div class="card" style="margin-bottom:16px;border-left:4px solid var(--purple)">
+    <div class="card-title">Registrar pagamento</div>
+    <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
+      <div class="fg" style="flex:2;min-width:180px;margin-bottom:0"><label class="fl">Fornecedor</label><select class="fi" id="p12forn"></select></div>
+      <div class="fg" style="flex:1;min-width:130px;margin-bottom:0"><label class="fl">Data</label><input class="fi" type="date" id="p12data"></div>
+      <div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label class="fl">Valor (R$)</label><input class="fi" type="number" id="p12valor" placeholder="ex: 5000.00"></div>
+      <div class="fg" style="flex:2;min-width:160px;margin-bottom:0"><label class="fl">Observação</label><input class="fi" id="p12obs" placeholder="opcional"></div>
+      <button class="btn btn-p" onclick="registrarPagamento()">Lançar</button>
+    </div>
+    <div class="sb2" id="ok12">Pagamento registrado.</div>
+  </div>
+  <div id="f12resultado"></div>
 </div>
 
     </div>
@@ -567,6 +600,11 @@ function mostrarApp(){
     document.getElementById('n10').style.display=''
     mostrarBotoesMgr()
   }
+  if(US&&US.pode_ver_financeiro){
+    document.getElementById('sb-fin-sec').style.display=''
+    document.getElementById('n11').style.display=''
+    document.getElementById('n12').style.display=''
+  }
   aplicarPerms();carregaForns();loadS0()
 }
 
@@ -577,8 +615,8 @@ function aplicarPerms(){
 }
 function logout(){localStorage.removeItem('token');localStorage.removeItem('usuario');location.reload()}
 
-const TITLES=['Compra de fruto','Balança — chegada','Recepção de fruto','Balança — saída','Despolpamento','Rendimento','Relatório final','Fornecedores','Usuários','Editar dados','Histórico']
-const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,function(){return(window.loadS7||loadS7)()},loadS8,loadS9,loadS10]
+const TITLES=['Compra de fruto','Balança — chegada','Recepção de fruto','Balança — saída','Despolpamento','Rendimento','Relatório final','Fornecedores','Usuários','Editar dados','Histórico','Frete por placa','Saldo de fornecedores']
+const LOADERS=[loadS0,loadS1,loadS2,loadS3,loadS4,loadS5,loadS6,function(){return(window.loadS7||loadS7)()},loadS8,loadS9,loadS10,loadS11,loadS12]
 
 function go(n){
   const nav=document.getElementById('n'+n)
@@ -605,7 +643,7 @@ function toggleUnidadeOutros(selId,inputId){const s=document.getElementById(selI
 function getUnidadeFabril(selId,inputId){const s=document.getElementById(selId);return s.value==='outros'?(document.getElementById(inputId).value||'outros'):s.value}
 function calcC(){const l=parseFloat(document.getElementById('cl').value)||0,p=parseFloat(document.getElementById('cp').value)||0,f=parseFloat(document.getElementById('cfrete-valor').value)||0;const tot=(l&&p)?(l*p)+f:0;document.getElementById('ctotal').textContent=tot?'R$ '+tot.toLocaleString('pt-BR',{minimumFractionDigits:2}):'R$ —'}
 async function loadS0(){var _cdEl=document.getElementById('cd');if(_cdEl&&!_cdEl.value)_cdEl.value=DATA_TRABALHO;try{const d=await req('GET','/compras/resumo-dia?data='+DATA_TRABALHO),el=document.getElementById('lista0');if(!d.itens||!d.itens.length){el.innerHTML='<div class="ls">Nenhuma ordem hoje.</div>';return}window._s0LoteId=null;el.innerHTML=d.itens.map(i=>`<div class="sr s0-item" data-lid="${i.lote_id||''}" style="cursor:pointer;border-radius:8px;padding:8px;transition:background .15s" onclick="selecionarLoteS0(this,'${i.lote_id||''}','${(i.fornecedor||'').replace(/'/g,'\\\'')}')"><div><div class="fw7" style="margin-bottom:4px">${i.fornecedor}</div><div class="tm" style="font-size:12px">${i.qtd_latas_prevista} latas · ${fmtMoeda(i.preco_por_lata)}/lata</div></div><div style="text-align:right"><span class="badge ${bge(i.lote_status)}">${sts(i.lote_status)}</span><div class="mn tm" style="margin-top:5px">${fmtMoeda(i.total_estimado)}</div></div></div>`).join('')+`<hr><div class="fb"><span style="font-size:12px;color:var(--text3)">Total do dia</span><span class="mn fw7 tg" style="font-size:15px">${fmtMoeda(d.total_estimado)}</span></div>`}catch(e){document.getElementById('lista0').innerHTML='<div class="ls">'+e.message+'</div>'}}
-async function regCompra(){const btn=document.getElementById('bc0'),fid=document.getElementById('cf').value,latas=document.getElementById('cl').value,preco=document.getElementById('cp').value;if(!fid||!latas||!preco){alert('Preencha fornecedor, quantidade e preço.');return}btn.classList.add('loading');btn.disabled=true;try{const dataOp=document.getElementById('cd').value||DATA_TRABALHO;const lote=await req('POST','/lotes',{fornecedor_id:parseInt(fid),data_operacao:dataOp});await req('POST','/compras',{lote_id:lote.id,fornecedor_id:parseInt(fid),qtd_latas_prevista:parseInt(latas),preco_por_lata:parseFloat(preco),data_entrega_prev:document.getElementById('cd').value||HOJE,regiao:document.getElementById('cc').value,tipo_frete:document.getElementById('cfrete-tipo').value,valor_frete:parseFloat(document.getElementById('cfrete-valor').value)||0,unidade_fabril:getUnidadeFabril('cunidade','cunidade-outros')});ok('ok0');loadS0();carregaLotes()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
+async function regCompra(){const btn=document.getElementById('bc0'),fid=document.getElementById('cf').value,latas=document.getElementById('cl').value,preco=document.getElementById('cp').value;if(!fid||!latas||!preco){alert('Preencha fornecedor, quantidade e preço.');return}btn.classList.add('loading');btn.disabled=true;try{const dataOp=document.getElementById('cd').value||DATA_TRABALHO;const lote=await req('POST','/lotes',{fornecedor_id:parseInt(fid),data_operacao:dataOp});await req('POST','/compras',{lote_id:lote.id,fornecedor_id:parseInt(fid),qtd_latas_prevista:parseInt(latas),preco_por_lata:parseFloat(preco),data_entrega_prev:document.getElementById('cd').value||HOJE,regiao:document.getElementById('cc').value,tipo_frete:document.getElementById('cfrete-tipo').value,valor_frete:parseFloat(document.getElementById('cfrete-valor').value)||0,unidade_fabril:getUnidadeFabril('cunidade','cunidade-outros'),placa:document.getElementById('cplaca').value||null,frete_no_saldo:document.getElementById('cfrete-saldo').checked});document.getElementById('cplaca').value='';document.getElementById('cfrete-saldo').checked=false;ok('ok0');loadS0();carregaLotes()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S1
 function calcCarga1(){const b=parseFloat(document.getElementById('b1bruto').value)||0,t=parseFloat(document.getElementById('b1tara').value)||0;document.getElementById('b1carga').textContent=(b&&t&&b>t)?(b-t).toLocaleString('pt-BR')+' kg':'— kg'}
@@ -823,6 +861,7 @@ function abrirFormUsuario(u){
   document.getElementById('u8senha').value=''
   document.getElementById('u8ativo').checked=u?!!u.ativo:true
   document.getElementById('u8ocultar').checked=u?!!u.ocultar_valores:false
+  document.getElementById('u8financeiro').checked=u?!!u.pode_ver_financeiro:false
   const ps=document.getElementById('u8perfil')
   const perfis=[{id:1,nome:'gerente'},{id:2,nome:'comprador'},{id:3,nome:'balanca'},{id:4,nome:'recepcao'},{id:5,nome:'producao'}]
   ps.innerHTML=perfis.map(p=>`<option value="${p.id}" ${u&&u.perfil===p.nome?'selected':''}>${p.nome}</option>`).join('')
@@ -832,10 +871,11 @@ async function salvarUsuario(){
   const id=document.getElementById('u8id').value,nome=document.getElementById('u8nome').value,email=document.getElementById('u8email').value,senha=document.getElementById('u8senha').value
   const perfil_id=parseInt(document.getElementById('u8perfil').value),ativo=document.getElementById('u8ativo').checked
   const ocultar_valores=document.getElementById('u8ocultar').checked
+  const pode_ver_financeiro=document.getElementById('u8financeiro').checked
   if(!nome||!email){alert('Nome e e-mail são obrigatórios.');return}
   if(!id&&!senha){alert('Informe a senha para o novo usuário.');return}
   try{
-    const body={nome,email,perfil_id,ativo,ocultar_valores}
+    const body={nome,email,perfil_id,ativo,ocultar_valores,pode_ver_financeiro}
     if(senha)body.senha=senha
     if(id)await req('PUT','/auth/usuarios/'+id,body)
     else await req('POST','/auth/usuarios',body)
@@ -843,6 +883,73 @@ async function salvarUsuario(){
     loadS8()
   }catch(e){alert('Erro: '+e.message)}
 }
+
+
+// S11: FRETE POR PLACA
+async function loadS11(){
+  const el=document.getElementById('f11resultado')
+  el.innerHTML='<div class="card"><div class="ls">Carregando...</div></div>'
+  const ini=document.getElementById('f11ini').value, fim=document.getElementById('f11fim').value
+  let url='/financeiro/fretes-placa'
+  if(ini&&fim)url+='?inicio='+ini+'&fim='+fim
+  try{
+    const r=await req('GET',url)
+    if(!r.length){el.innerHTML='<div class="card"><div class="ls">Nenhum lote com placa informada neste período. A placa é preenchida na etapa 1 (Compra de fruto).</div></div>';return}
+    const totF=r.reduce((s,x)=>s+Number(x.total_frete||0),0)
+    const totL=r.reduce((s,x)=>s+Number(x.latas||0),0)
+    const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px">${[
+      {label:'PLACAS',val:r.length,sub:'veículos no período',color:'var(--purple)'},
+      {label:'TOTAL DE FRETE',val:'R$ '+fmtBRL(totF,2),sub:'no período',color:'var(--green)'},
+      {label:'FRETE MÉDIO/LATA',val:totL>0?'R$ '+fmtBRL(totF/totL,2):'—',sub:'média ponderada',color:'var(--yellow)'}
+    ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div></div>`).join('')}</div>`
+    const tab=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🚚 Desempenho por placa</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Placa','Lotes','Latas','Frete total','Frete/lata','Período','Fornecedores'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${r.map((x,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(255,193,7,.08)':''}"><td style="padding:9px 12px;font-weight:700;font-family:monospace">${x.placa}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">${fmtBRL(x.latas,0)}</td><td style="padding:9px 12px;font-weight:600">R$ ${fmtBRL(x.total_frete,2)}</td><td style="padding:9px 12px;font-weight:700;color:var(--purple)">${x.frete_por_lata!=null?'R$ '+fmtBRL(x.frete_por_lata,2):'—'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.primeira_viagem)} a ${fmtDataBR(x.ultima_viagem)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.fornecedores||'—'}</td></tr>`).join('')}</tbody></table></div></div>`
+    el.innerHTML=kpis+tab
+  }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+function fmtDataBR(d){if(!d)return'—';const dt=new Date(String(d).slice(0,10)+'T12:00:00');return isNaN(dt)?'—':dt.toLocaleDateString('pt-BR')}
+
+// S12: SALDO DE FORNECEDORES
+async function loadS12(){
+  const el=document.getElementById('f12resultado')
+  el.innerHTML='<div class="card"><div class="ls">Carregando...</div></div>'
+  try{
+    if(!document.getElementById('p12data').value)document.getElementById('p12data').value=HOJE
+    const sel=document.getElementById('p12forn')
+    if(!sel.options.length&&FORNS&&FORNS.length)sel.innerHTML=FORNS.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')
+    const r=await req('GET','/financeiro/saldos')
+    const lista=r.fornecedores||[], res=r.resumo||{}
+    const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px">${[
+      {label:'TOTAL DEVIDO',val:'R$ '+fmtBRL(res.total_devido,2),sub:'todos os lotes',color:'var(--purple)'},
+      {label:'TOTAL PAGO',val:'R$ '+fmtBRL(res.total_pago,2),sub:'lançamentos',color:'var(--green)'},
+      {label:'SALDO EM ABERTO',val:'R$ '+fmtBRL(res.saldo_aberto,2),sub:'a pagar',color:Number(res.saldo_aberto)>0?'var(--yellow)':'var(--green)'}
+    ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div></div>`).join('')}</div>`
+    const tab=lista.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">💰 Contas a pagar</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Fornecedor','Lotes','Devido','Pago','Saldo','Último lote','Último pgto',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${lista.map(x=>`<tr style="border-top:1px solid var(--border);background:${Number(x.saldo)>0?'rgba(245,197,24,.07)':''}"><td style="padding:9px 12px;font-weight:600">${x.fornecedor}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">R$ ${fmtBRL(x.total_devido,2)}</td><td style="padding:9px 12px;color:var(--green)">R$ ${fmtBRL(x.total_pago,2)}</td><td style="padding:9px 12px;font-weight:700;color:${Number(x.saldo)>0?'var(--yellow-dark)':'var(--green)'}">R$ ${fmtBRL(x.saldo,2)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_lote)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_pagamento)}</td><td style="padding:9px 12px"><button class="btn" style="padding:4px 10px;font-size:11px" onclick="verPagamentos(${x.fornecedor_id},'${(x.fornecedor||'').replace(/'/g,"\\'")}')">Extrato</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="card"><div class="ls">Nenhum fornecedor com lotes ou pagamentos.</div></div>'
+    el.innerHTML=kpis+tab+'<div id="f12extrato"></div>'
+  }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+async function registrarPagamento(){
+  const fid=document.getElementById('p12forn').value, valor=document.getElementById('p12valor').value
+  if(!fid||!valor){alert('Informe fornecedor e valor.');return}
+  try{
+    await req('POST','/financeiro/pagamentos',{fornecedor_id:parseInt(fid),data_pagamento:document.getElementById('p12data').value||null,valor:parseFloat(valor),observacoes:document.getElementById('p12obs').value||null})
+    document.getElementById('p12valor').value='';document.getElementById('p12obs').value=''
+    ok('ok12');loadS12()
+  }catch(e){alert('Erro: '+e.message)}
+}
+async function verPagamentos(fid,nome){
+  const el=document.getElementById('f12extrato')
+  el.innerHTML='<div class="card"><div class="ls">Carregando...</div></div>'
+  try{
+    const r=await req('GET','/financeiro/pagamentos?fornecedor_id='+fid)
+    if(!r.length){el.innerHTML='<div class="card"><div class="ls">Nenhum pagamento lançado para '+nome+'.</div></div>';return}
+    el.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📄 Extrato — ${nome}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Data','Valor','Observação','Registrado por',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead><tbody>${r.map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">${fmtDataBR(x.data_pagamento)}</td><td style="padding:9px 12px;font-weight:700">R$ ${fmtBRL(x.valor,2)}</td><td style="padding:9px 12px;color:var(--text2)">${x.observacoes||'—'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.registrado_por_nome||'—'}</td><td style="padding:9px 12px"><button class="btn" style="padding:4px 10px;font-size:11px;color:var(--red)" onclick="excluirPagamento('${x.id}')">Excluir</button></td></tr>`).join('')}</tbody></table></div></div>`
+  }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+async function excluirPagamento(id){
+  if(!confirm('Excluir este pagamento?'))return
+  try{await req('DELETE','/financeiro/pagamentos/'+id);loadS12()}catch(e){alert('Erro: '+e.message)}
+}
+
 
 // S9: EDITAR DADOS
 async function loadS9(){await carregaLotesEdicao()}
