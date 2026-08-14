@@ -12,6 +12,7 @@ const recepcoesRoutes    = require('./routes/recepcoes')
 const producaoRoutes     = require('./routes/producao')
 const relatoriosRoutes   = require('./routes/relatorios')
 const masterRoutes       = require('./routes/master')
+const financeiroRoutes   = require('./routes/financeiro')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -42,6 +43,7 @@ app.use('/recepcoes',    masterRoutes)
 app.use('/producao',     producaoRoutes)
 app.use('/producao',     masterRoutes)
 app.use('/relatorios',   relatoriosRoutes)
+app.use('/financeiro',   financeiroRoutes)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', versao: '1.0.0', sistema: 'Amazon Polpas' })
