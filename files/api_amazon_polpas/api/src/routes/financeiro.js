@@ -16,19 +16,19 @@ const SQL_DEVIDO = `
 `
 
 // GET /financeiro/fretes-placa?inicio=&fim=
-// Agrupa por placa. Considera apenas lotes com placa preenchida.
+// Agrupa pela placa registrada na balanca de chegada (pesagens_chegada).
 router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) => {
   const { inicio, fim } = req.query
   try {
     const params = []
-    let filtro = "WHERE c.placa IS NOT NULL AND TRIM(c.placa) <> ''"
+    let filtro = "WHERE pc.placa_veiculo IS NOT NULL AND TRIM(pc.placa_veiculo) <> ''"
     if (inicio && fim) {
       params.push(inicio, fim)
       filtro += ` AND DATE(l.data_operacao) BETWEEN $1 AND $2`
     }
     const { rows } = await pool.query(
       `SELECT
-         UPPER(TRIM(c.placa))                              AS placa,
+         UPPER(TRIM(pc.placa_veiculo))                     AS placa,
          COUNT(DISTINCT l.id)                              AS lotes,
          COUNT(DISTINCT DATE(l.data_operacao))             AS viagens,
          COALESCE(SUM(COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista)), 0) AS latas,
@@ -40,8 +40,9 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
        JOIN compras c ON c.lote_id = l.id
        JOIN fornecedores f ON f.id = l.fornecedor_id
        LEFT JOIN recepcoes r ON r.lote_id = l.id
+       JOIN pesagens_chegada pc ON pc.lote_id = l.id
        ${filtro}
-       GROUP BY UPPER(TRIM(c.placa))
+       GROUP BY UPPER(TRIM(pc.placa_veiculo))
        ORDER BY total_frete DESC`,
       params
     )
