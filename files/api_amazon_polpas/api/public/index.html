@@ -458,8 +458,8 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label class="fl">Início</label><input class="fi" type="date" id="f11ini"></div>
       <div class="fg" style="flex:1;min-width:140px;margin-bottom:0"><label class="fl">Fim</label><input class="fi" type="date" id="f11fim"></div>
-      <button class="btn btn-p" onclick="loadS11()">Buscar</button>
-      <button class="btn" onclick="document.getElementById('f11ini').value='';document.getElementById('f11fim').value='';loadS11()">Todo o período</button>
+      <div class="fg" style="flex:1;min-width:150px;margin-bottom:0"><label class="fl">Unidade fabril</label><select class="fi" id="f11unid"><option value="">Todas</option></select></div><button class="btn btn-p" onclick="loadS11()">Buscar</button>
+      <button class="btn" onclick="document.getElementById('f11ini').value='';document.getElementById('f11fim').value='';document.getElementById('f11unid').value='';loadS11()">Todo o período</button>
     </div>
   </div>
   <div id="f11resultado"></div>
@@ -890,22 +890,47 @@ async function salvarUsuario(){
 async function loadS11(){
   const el=document.getElementById('f11resultado')
   el.innerHTML='<div class="card"><div class="ls">Carregando...</div></div>'
-  const ini=document.getElementById('f11ini').value, fim=document.getElementById('f11fim').value
-  let url='/financeiro/fretes-placa'
-  if(ini&&fim)url+='?inicio='+ini+'&fim='+fim
+  const ini=document.getElementById('f11ini').value, fim=document.getElementById('f11fim').value, un=document.getElementById('f11unid').value
+  const qs=[]; if(ini&&fim){qs.push('inicio='+ini);qs.push('fim='+fim)} if(un)qs.push('unidade='+encodeURIComponent(un))
   try{
-    const r=await req('GET',url)
-    if(!r.length){el.innerHTML='<div class="card"><div class="ls">Nenhum lote com placa informada neste período. A placa é preenchida na etapa 2 (Balança — chegada).</div></div>';return}
+    const d=await req('GET','/financeiro/fretes-placa'+(qs.length?'?'+qs.join('&'):''))
+    const r=d.placas||[], meses=d.por_mes||[]
+    const selU=document.getElementById('f11unid')
+    if(d.unidades&&d.unidades.length&&selU.options.length<=1){
+      selU.innerHTML='<option value="">Todas</option>'+d.unidades.map(u=>`<option value="${u}">${rotuloUnidade(u)}</option>`).join('')
+      selU.value=un
+    }
+    if(!r.length){el.innerHTML='<div class="card"><div class="ls">Nenhum lote com placa informada neste filtro. A placa e preenchida na etapa 2 (Balanca - chegada).</div></div>';return}
     const totF=r.reduce((s,x)=>s+Number(x.total_frete||0),0)
     const totL=r.reduce((s,x)=>s+Number(x.latas||0),0)
     const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px">${[
-      {label:'PLACAS',val:r.length,sub:'veículos no período',color:'var(--purple)'},
-      {label:'TOTAL DE FRETE',val:'R$ '+fmtBRLg(totF,2),sub:'no período',color:'var(--green)'},
-      {label:'FRETE MÉDIO/LATA',val:totL>0?'R$ '+fmtBRLg(totF/totL,2):'—',sub:'média ponderada',color:'var(--yellow)'}
+      {label:'PLACAS',val:r.length,sub:'veiculos no filtro',color:'var(--purple)'},
+      {label:'TOTAL DE FRETE',val:'R$ '+fmtBRLg(totF,2),sub:'no periodo',color:'var(--green)'},
+      {label:'FRETE MEDIO/LATA',val:totL>0?'R$ '+fmtBRLg(totF/totL,2):'-',sub:'media ponderada',color:'var(--yellow)'}
     ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div></div>`).join('')}</div>`
-    const tab=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🚚 Desempenho por placa</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Placa','Lotes','Latas','Frete total','Frete/lata','Período','Fornecedores'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${r.map((x,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(255,193,7,.08)':''}"><td style="padding:9px 12px;font-weight:700;font-family:monospace">${x.placa}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">${fmtBRLg(x.latas,0)}</td><td style="padding:9px 12px;font-weight:600">R$ ${fmtBRLg(x.total_frete,2)}</td><td style="padding:9px 12px;font-weight:700;color:var(--purple)">${x.frete_por_lata!=null?'R$ '+fmtBRLg(x.frete_por_lata,2):'—'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.primeira_viagem)} a ${fmtDataBR(x.ultima_viagem)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.fornecedores||'—'}</td></tr>`).join('')}</tbody></table></div></div>`
-    el.innerHTML=kpis+tab
+    const grafico=meses.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Frete por mes</div>${barrasMensais(meses,'total_frete','R$ ')}</div>`:''
+    const tab=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Desempenho por placa</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Placa','Lotes','Latas','Frete total','Frete/lata','Periodo','Unidade','Fornecedores'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${r.map((x,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(255,193,7,.08)':''}"><td style="padding:9px 12px;font-weight:700;font-family:monospace">${x.placa}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">${fmtBRLg(x.latas,0)}</td><td style="padding:9px 12px;font-weight:600">R$ ${fmtBRLg(x.total_frete,2)}</td><td style="padding:9px 12px;font-weight:700;color:var(--purple)">${x.frete_por_lata!=null?'R$ '+fmtBRLg(x.frete_por_lata,2):'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.primeira_viagem)} a ${fmtDataBR(x.ultima_viagem)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${(x.unidades||'').split(', ').map(rotuloUnidade).join(', ')||'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.fornecedores||'-'}</td></tr>`).join('')}</tbody></table></div></div>`
+    el.innerHTML=kpis+grafico+tab
   }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+function rotuloUnidade(u){const m={amazon_polpas:'Amazon Polpas',amazon_filial:'Amazon Filial',granfruto:'Granfruto',cameta:'Cameta'};return m[u]||u||'-'}
+function nomeMes(ym){if(!ym)return '';const[a,m]=ym.split('-');return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][Number(m)-1]+'/'+a.slice(2)}
+function barrasMensais(dados,campo,prefixo,serie2,rotulo1,rotulo2){
+  const max=Math.max(...dados.map(d=>Math.max(Number(d[campo]||0),Number(serie2?d[serie2]:0))),1)
+  const larg=Math.max(320,dados.length*(serie2?78:56)+40), alt=190, base=alt-34, esq=8
+  const passo=(larg-esq-10)/dados.length
+  const bw=serie2?Math.min(26,passo/2.6):Math.min(34,passo*0.6)
+  const barras=dados.map((d,i)=>{
+    const x=esq+i*passo+passo/2
+    const v1=Number(d[campo]||0), h1=Math.max(1,(v1/max)*base)
+    let s=`<rect x="${(serie2?x-bw-2:x-bw/2).toFixed(1)}" y="${(base-h1).toFixed(1)}" width="${bw}" height="${h1.toFixed(1)}" rx="3" fill="var(--purple)"><title>${nomeMes(d.mes)}: ${prefixo}${fmtBRLg(v1,2)}</title></rect>`
+    if(serie2){const v2=Number(d[serie2]||0),h2=Math.max(1,(v2/max)*base);s+=`<rect x="${(x+2).toFixed(1)}" y="${(base-h2).toFixed(1)}" width="${bw}" height="${h2.toFixed(1)}" rx="3" fill="var(--green)"><title>${nomeMes(d.mes)}: ${prefixo}${fmtBRLg(v2,2)}</title></rect>`}
+    s+=`<text x="${x.toFixed(1)}" y="${alt-16}" text-anchor="middle" font-size="10" fill="var(--text2)">${nomeMes(d.mes)}</text>`
+    if(!serie2)s+=`<text x="${x.toFixed(1)}" y="${(base-h1-5).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--text2)">${fmtBRLg(v1,0)}</text>`
+    return s
+  }).join('')
+  const leg=serie2?`<div style="display:flex;gap:16px;font-size:11px;color:var(--text2);margin-top:6px"><span><span style="display:inline-block;width:10px;height:10px;background:var(--purple);border-radius:2px;margin-right:5px"></span>${rotulo1||'Devido'}</span><span><span style="display:inline-block;width:10px;height:10px;background:var(--green);border-radius:2px;margin-right:5px"></span>${rotulo2||'Pago'}</span></div>`:''
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${larg} ${alt}" width="${larg}" height="${alt}" style="max-width:100%;height:auto"><line x1="${esq}" y1="${base}" x2="${larg-6}" y2="${base}" stroke="var(--border)" stroke-width="1"/>${barras}</svg></div>${leg}`
 }
 function fmtDataBR(d){if(!d)return'—';const dt=new Date(String(d).slice(0,10)+'T12:00:00');return isNaN(dt)?'—':dt.toLocaleDateString('pt-BR')}
 
