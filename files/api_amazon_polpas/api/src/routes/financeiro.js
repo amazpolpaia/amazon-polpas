@@ -18,13 +18,17 @@ const SQL_DEVIDO = `
 // GET /financeiro/fretes-placa?inicio=&fim=
 // Agrupa pela placa registrada na balanca de chegada (pesagens_chegada).
 router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) => {
-  const { inicio, fim } = req.query
+  const { inicio, fim, unidade } = req.query
   try {
     const params = []
     let filtro = "WHERE pc.placa_veiculo IS NOT NULL AND TRIM(pc.placa_veiculo) <> ''"
     if (inicio && fim) {
       params.push(inicio, fim)
-      filtro += ` AND DATE(l.data_operacao) BETWEEN $1 AND $2`
+      filtro += ` AND DATE(l.data_operacao) BETWEEN $${params.length - 1} AND $${params.length}`
+    }
+    if (unidade) {
+      params.push(unidade)
+      filtro += ` AND c.unidade_fabril = $${params.length}`
     }
     const { rows } = await pool.query(
       `SELECT
@@ -35,7 +39,8 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
          COALESCE(SUM(COALESCE(c.valor_frete, 0)), 0)      AS total_frete,
          MIN(DATE(l.data_operacao))                        AS primeira_viagem,
          MAX(DATE(l.data_operacao))                        AS ultima_viagem,
-         STRING_AGG(DISTINCT f.nome, ', ')                 AS fornecedores
+         STRING_AGG(DISTINCT f.nome, ', ')                 AS fornecedores,
+         STRING_AGG(DISTINCT c.unidade_fabril, ', ')       AS unidades
        FROM lotes l
        JOIN compras c ON c.lote_id = l.id
        JOIN fornecedores f ON f.id = l.fornecedor_id
@@ -46,15 +51,42 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
        ORDER BY total_frete DESC`,
       params
     )
-    res.json(
-      rows.map((p) => ({
+    // Serie mensal do frete (respeita os mesmos filtros)
+    const { rows: meses } = await pool.query(
+      `SELECT TO_CHAR(DATE_TRUNC('month', l.data_operacao), 'YYYY-MM') AS mes,
+              COALESCE(SUM(COALESCE(c.valor_frete, 0)), 0)             AS total_frete,
+              COALESCE(SUM(COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista)), 0) AS latas
+       FROM lotes l
+       JOIN compras c ON c.lote_id = l.id
+       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       JOIN pesagens_chegada pc ON pc.lote_id = l.id
+       ${filtro}
+       GROUP BY 1 ORDER BY 1`,
+      params
+    )
+
+    // Unidades fabris disponiveis para o seletor
+    const { rows: unidades } = await pool.query(
+      `SELECT DISTINCT c.unidade_fabril AS unidade
+       FROM compras c WHERE c.unidade_fabril IS NOT NULL ORDER BY 1`
+    )
+
+    res.json({
+      placas: rows.map((p) => ({
         ...p,
         latas: Number(p.latas),
         total_frete: Number(p.total_frete),
         frete_por_lata:
           Number(p.latas) > 0 ? Number((Number(p.total_frete) / Number(p.latas)).toFixed(2)) : null,
-      }))
-    )
+      })),
+      por_mes: meses.map((m) => ({
+        mes: m.mes,
+        total_frete: Number(m.total_frete),
+        latas: Number(m.latas),
+        frete_por_lata: Number(m.latas) > 0 ? Number((Number(m.total_frete) / Number(m.latas)).toFixed(2)) : null,
+      })),
+      unidades: unidades.map((u) => u.unidade),
+    })
   } catch (err) {
     console.error(err)
     res.status(500).json({ erro: 'Erro ao buscar fretes por placa.' })
