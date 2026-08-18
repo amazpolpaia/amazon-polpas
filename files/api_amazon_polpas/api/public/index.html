@@ -466,12 +466,12 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
 </div>
 
 <div class="screen" id="s12">
-  <div class="section-header sh-duo"><div><div class="sh-title">Saldo de fornecedores</div><div class="sh-sub">Contas a pagar — devido menos pago</div></div></div>
+  <div class="section-header sh-duo"><div><div class="sh-title">Saldo de fornecedores</div><div class="sh-sub">Contas a pagar — devido menos pago</div></div><div style="display:flex;align-items:center;gap:8px"><label class="fl" style="margin:0;color:#fff">Unidade</label><select class="fi" id="f12unid" onchange="loadS12()" style="min-width:170px"><option value="">Todas</option></select></div></div>
   <div class="card" style="margin-bottom:16px;border-left:4px solid var(--purple)">
     <div class="card-title">Registrar pagamento</div>
     <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
       <div class="fg" style="flex:2;min-width:180px;margin-bottom:0"><label class="fl">Fornecedor</label><select class="fi" id="p12forn"></select></div>
-      <div class="fg" style="flex:1;min-width:130px;margin-bottom:0"><label class="fl">Data</label><input class="fi" type="date" id="p12data"></div>
+      <div class="fg" style="flex:1;min-width:150px;margin-bottom:0"><label class="fl">Unidade fabril</label><select class="fi" id="p12unid"></select></div><div class="fg" style="flex:1;min-width:130px;margin-bottom:0"><label class="fl">Data</label><input class="fi" type="date" id="p12data"></div>
       <div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label class="fl">Valor (R$)</label><input class="fi" type="number" id="p12valor" placeholder="ex: 5000.00"></div>
       <div class="fg" style="flex:2;min-width:160px;margin-bottom:0"><label class="fl">Observação</label><input class="fi" id="p12obs" placeholder="opcional"></div>
       <button class="btn btn-p" onclick="registrarPagamento()">Lançar</button>
@@ -942,22 +942,30 @@ async function loadS12(){
     if(!document.getElementById('p12data').value)document.getElementById('p12data').value=HOJE
     const sel=document.getElementById('p12forn')
     if(!sel.options.length&&FORNS&&FORNS.length)sel.innerHTML=FORNS.map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')
-    const r=await req('GET','/financeiro/saldos')
-    const lista=r.fornecedores||[], res=r.resumo||{}
+    const un=document.getElementById('f12unid').value
+    const d=await req('GET','/financeiro/saldos'+(un?'?unidade='+encodeURIComponent(un):''))
+    const lista=d.fornecedores||[], res=d.resumo||{}, meses=d.por_mes||[]
+    const selF=document.getElementById('f12unid'), selP=document.getElementById('p12unid')
+    if(d.unidades&&d.unidades.length){
+      if(selF.options.length<=1){selF.innerHTML='<option value="">Todas</option>'+d.unidades.map(u=>`<option value="${u}">${rotuloUnidade(u)}</option>`).join('');selF.value=un}
+      if(!selP.options.length)selP.innerHTML=d.unidades.map(u=>`<option value="${u}">${rotuloUnidade(u)}</option>`).join('')
+    }
     const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px">${[
       {label:'TOTAL DEVIDO',val:'R$ '+fmtBRLg(res.total_devido,2),sub:'todos os lotes',color:'var(--purple)'},
-      {label:'TOTAL PAGO',val:'R$ '+fmtBRLg(res.total_pago,2),sub:'lançamentos',color:'var(--green)'},
+      {label:'TOTAL PAGO',val:'R$ '+fmtBRLg(res.total_pago,2),sub:'lancamentos',color:'var(--green)'},
       {label:'SALDO EM ABERTO',val:'R$ '+fmtBRLg(res.saldo_aberto,2),sub:'a pagar',color:Number(res.saldo_aberto)>0?'var(--yellow)':'var(--green)'}
     ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div></div>`).join('')}</div>`
-    const tab=lista.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">💰 Contas a pagar</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Fornecedor','Lotes','Devido','Pago','Saldo','Último lote','Último pgto',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${lista.map(x=>`<tr style="border-top:1px solid var(--border);background:${Number(x.saldo)>0?'rgba(245,197,24,.07)':''}"><td style="padding:9px 12px;font-weight:600">${x.fornecedor}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">R$ ${fmtBRLg(x.total_devido,2)}</td><td style="padding:9px 12px;color:var(--green)">R$ ${fmtBRLg(x.total_pago,2)}</td><td style="padding:9px 12px;font-weight:700;color:${Number(x.saldo)>0?'var(--yellow-dark)':'var(--green)'}">R$ ${fmtBRLg(x.saldo,2)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_lote)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_pagamento)}</td><td style="padding:9px 12px"><button class="btn" style="padding:4px 10px;font-size:11px" onclick="verPagamentos(${x.fornecedor_id},'${(x.fornecedor||'').replace(/'/g,"\\'")}')">Extrato</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="card"><div class="ls">Nenhum fornecedor com lotes ou pagamentos.</div></div>'
-    el.innerHTML=kpis+tab+'<div id="f12extrato"></div>'
+    const grafico=meses.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Devido x pago por mes</div>${barrasMensais(meses,'devido','R$ ','pago','Devido','Pago')}</div>`:''
+    const tab=lista.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Contas a pagar</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Fornecedor','Lotes','Devido','Pago','Saldo','Ultimo lote','Ultimo pgto',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${lista.map(x=>`<tr style="border-top:1px solid var(--border);background:${Number(x.saldo)>0?'rgba(245,197,24,.07)':''}"><td style="padding:9px 12px;font-weight:600">${x.fornecedor}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">R$ ${fmtBRLg(x.total_devido,2)}</td><td style="padding:9px 12px;color:var(--green)">R$ ${fmtBRLg(x.total_pago,2)}</td><td style="padding:9px 12px;font-weight:700;color:${Number(x.saldo)>0?'var(--yellow-dark)':'var(--green)'}">R$ ${fmtBRLg(x.saldo,2)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_lote)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.ultimo_pagamento)}</td><td style="padding:9px 12px"><button class="btn" style="padding:4px 10px;font-size:11px" onclick="verPagamentos(${x.fornecedor_id},'${(x.fornecedor||'').replace(/'/g,"\\'")}')">Extrato</button></td></tr>`).join('')}</tbody></table></div></div>`:'<div class="card"><div class="ls">Nenhum fornecedor com lotes ou pagamentos neste filtro.</div></div>'
+    el.innerHTML=kpis+grafico+tab+'<div id="f12extrato"></div>'
   }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
 }
 async function registrarPagamento(){
-  const fid=document.getElementById('p12forn').value, valor=document.getElementById('p12valor').value
+  const fid=document.getElementById('p12forn').value, valor=document.getElementById('p12valor').value, uni=document.getElementById('p12unid').value
   if(!fid||!valor){alert('Informe fornecedor e valor.');return}
+  if(!uni){alert('Selecione a unidade fabril do pagamento.');return}
   try{
-    await req('POST','/financeiro/pagamentos',{fornecedor_id:parseInt(fid),data_pagamento:document.getElementById('p12data').value||null,valor:parseFloat(valor),observacoes:document.getElementById('p12obs').value||null})
+    await req('POST','/financeiro/pagamentos',{fornecedor_id:parseInt(fid),data_pagamento:document.getElementById('p12data').value||null,valor:parseFloat(valor),observacoes:document.getElementById('p12obs').value||null,unidade_fabril:uni})
     document.getElementById('p12valor').value='';document.getElementById('p12obs').value=''
     ok('ok12');loadS12()
   }catch(e){alert('Erro: '+e.message)}
