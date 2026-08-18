@@ -13,6 +13,7 @@ const producaoRoutes     = require('./routes/producao')
 const relatoriosRoutes   = require('./routes/relatorios')
 const masterRoutes       = require('./routes/master')
 const financeiroRoutes   = require('./routes/financeiro')
+const { rodarMigracoes } = require('./db/migracoes')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -63,6 +64,8 @@ app.use((err, _req, res, _next) => {
   console.error(err)
   res.status(500).json({ erro: 'Erro interno do servidor.' })
 })
+
+rodarMigracoes()
 
 app.listen(PORT, () => {
   console.log(`\nAmazon Polpas rodando na porta ${PORT}`)
