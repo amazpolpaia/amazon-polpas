@@ -5,12 +5,13 @@ const pool = require('../db/pool')
 const { autenticar, autorizarFinanceiro } = require('../middleware/auth')
 
 // Valor devido de um lote ao fornecedor.
+// Considera apenas lotes com recepcao concluida (etapa 3).
 // total_ajustado ja inclui o frete; sem ele, latas recebidas x preco.
 // O frete so entra no saldo quando marcado em frete_no_saldo.
 const SQL_DEVIDO = `
   COALESCE(
     c.total_ajustado,
-    COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata
+    r.qtd_latas_recebidas * c.preco_por_lata
       + CASE WHEN COALESCE(c.frete_no_saldo, FALSE) THEN COALESCE(c.valor_frete, 0) ELSE 0 END
   )
 `
@@ -109,7 +110,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
                 MAX(DATE(l.data_operacao))  AS ultimo_lote
          FROM lotes l
          JOIN compras c ON c.lote_id = l.id
-         LEFT JOIN recepcoes r ON r.lote_id = l.id
+         JOIN recepcoes r ON r.lote_id = l.id
          WHERE COALESCE(l.status, '') <> 'cancelado' ${fDev}
          GROUP BY l.fornecedor_id
        ),
@@ -141,7 +142,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
               COALESCE(SUM(${SQL_DEVIDO}), 0) AS valor
        FROM lotes l
        JOIN compras c ON c.lote_id = l.id
-       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       JOIN recepcoes r ON r.lote_id = l.id
        WHERE COALESCE(l.status, '') <> 'cancelado' ${fDev}
        GROUP BY 1`,
       p
@@ -161,6 +162,18 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
     })
     const porMes = Object.values(mapa).sort((a, b) => a.mes.localeCompare(b.mes))
 
+    // Comprado por unidade fabril (sempre todas, para comparar)
+    const { rows: pu } = await pool.query(
+      `SELECT COALESCE(c.unidade_fabril, 'nao_informado') AS unidade,
+              COUNT(*)                        AS lotes,
+              COALESCE(SUM(${SQL_DEVIDO}), 0)   AS total_comprado
+       FROM lotes l
+       JOIN compras c ON c.lote_id = l.id
+       JOIN recepcoes r ON r.lote_id = l.id
+       WHERE COALESCE(l.status, '') <> 'cancelado'
+       GROUP BY 1 ORDER BY total_comprado DESC`
+    )
+
     const { rows: uni } = await pool.query(
       `SELECT DISTINCT c.unidade_fabril AS unidade
        FROM compras c WHERE c.unidade_fabril IS NOT NULL ORDER BY 1`
@@ -174,6 +187,11 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
     }))
     res.json({
       fornecedores: lista,
+      por_unidade: pu.map((u) => ({
+        unidade: u.unidade,
+        lotes: Number(u.lotes),
+        total_comprado: Number(u.total_comprado),
+      })),
       resumo: {
         total_devido: Number(lista.reduce((s, x) => s + x.total_devido, 0).toFixed(2)),
         total_pago: Number(lista.reduce((s, x) => s + x.total_pago, 0).toFixed(2)),
