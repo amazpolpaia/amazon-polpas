@@ -95,8 +95,12 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
 
 // GET /financeiro/saldos
 // Devido x pago por fornecedor.
-router.get('/saldos', autenticar, autorizarFinanceiro, async (_req, res) => {
+router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
+  const { unidade } = req.query
   try {
+    const p = unidade ? [unidade] : []
+    const fDev = unidade ? 'AND c.unidade_fabril = $1' : ''
+    const fPag = unidade ? 'WHERE unidade_fabril = $1' : ''
     const { rows } = await pool.query(
       `WITH devido AS (
          SELECT l.fornecedor_id,
@@ -106,14 +110,14 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (_req, res) => {
          FROM lotes l
          JOIN compras c ON c.lote_id = l.id
          LEFT JOIN recepcoes r ON r.lote_id = l.id
-         WHERE COALESCE(l.status, '') <> 'cancelado'
+         WHERE COALESCE(l.status, '') <> 'cancelado' ${fDev}
          GROUP BY l.fornecedor_id
        ),
        pago AS (
          SELECT fornecedor_id,
                 COALESCE(SUM(valor), 0)  AS total_pago,
                 MAX(data_pagamento)      AS ultimo_pagamento
-         FROM pagamentos
+         FROM pagamentos ${fPag}
          GROUP BY fornecedor_id
        )
        SELECT f.id                                   AS fornecedor_id,
@@ -128,8 +132,40 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (_req, res) => {
        LEFT JOIN devido d ON d.fornecedor_id = f.id
        LEFT JOIN pago   p ON p.fornecedor_id = f.id
        WHERE COALESCE(d.lotes, 0) > 0 OR COALESCE(p.total_pago, 0) > 0
-       ORDER BY saldo DESC, f.nome`
+       ORDER BY saldo DESC, f.nome`,
+      p
     )
+    // Serie mensal: devido (data do lote) x pago (data do pagamento)
+    const { rows: dm } = await pool.query(
+      `SELECT TO_CHAR(DATE_TRUNC('month', l.data_operacao), 'YYYY-MM') AS mes,
+              COALESCE(SUM(${SQL_DEVIDO}), 0) AS valor
+       FROM lotes l
+       JOIN compras c ON c.lote_id = l.id
+       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       WHERE COALESCE(l.status, '') <> 'cancelado' ${fDev}
+       GROUP BY 1`,
+      p
+    )
+    const { rows: pm } = await pool.query(
+      `SELECT TO_CHAR(DATE_TRUNC('month', data_pagamento), 'YYYY-MM') AS mes,
+              COALESCE(SUM(valor), 0) AS valor
+       FROM pagamentos ${fPag}
+       GROUP BY 1`,
+      p
+    )
+    const mapa = {}
+    dm.forEach((x) => { mapa[x.mes] = { mes: x.mes, devido: Number(x.valor), pago: 0 } })
+    pm.forEach((x) => {
+      if (!mapa[x.mes]) mapa[x.mes] = { mes: x.mes, devido: 0, pago: 0 }
+      mapa[x.mes].pago = Number(x.valor)
+    })
+    const porMes = Object.values(mapa).sort((a, b) => a.mes.localeCompare(b.mes))
+
+    const { rows: uni } = await pool.query(
+      `SELECT DISTINCT c.unidade_fabril AS unidade
+       FROM compras c WHERE c.unidade_fabril IS NOT NULL ORDER BY 1`
+    )
+
     const lista = rows.map((x) => ({
       ...x,
       total_devido: Number(x.total_devido),
@@ -145,6 +181,8 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (_req, res) => {
           lista.reduce((s, x) => s + (x.saldo > 0 ? x.saldo : 0), 0).toFixed(2)
         ),
       },
+      por_mes: porMes,
+      unidades: uni.map((u) => u.unidade),
     })
   } catch (err) {
     console.error(err)
@@ -164,7 +202,7 @@ router.get('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
     }
     const { rows } = await pool.query(
       `SELECT pg.id, pg.fornecedor_id, f.nome AS fornecedor,
-              pg.data_pagamento, pg.valor, pg.observacoes, pg.criado_em,
+              pg.data_pagamento, pg.valor, pg.observacoes, pg.criado_em, pg.unidade_fabril,
               u.nome AS registrado_por_nome
        FROM pagamentos pg
        JOIN fornecedores f ON f.id = pg.fornecedor_id
@@ -182,7 +220,7 @@ router.get('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
 
 // POST /financeiro/pagamentos
 router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
-  const { fornecedor_id, data_pagamento, valor, observacoes } = req.body
+  const { fornecedor_id, data_pagamento, valor, observacoes, unidade_fabril } = req.body
   if (!fornecedor_id || !valor)
     return res.status(400).json({ erro: 'Fornecedor e valor sao obrigatorios.' })
   if (Number(valor) <= 0)
@@ -190,10 +228,10 @@ router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => 
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO pagamentos (fornecedor_id, data_pagamento, valor, observacoes, registrado_por)
-       VALUES ($1, COALESCE($2, CURRENT_DATE), $3, $4, $5)
+      `INSERT INTO pagamentos (fornecedor_id, data_pagamento, valor, observacoes, registrado_por, unidade_fabril)
+       VALUES ($1, COALESCE($2, CURRENT_DATE), $3, $4, $5, $6)
        RETURNING *`,
-      [fornecedor_id, data_pagamento || null, valor, observacoes || null, req.usuario.id]
+      [fornecedor_id, data_pagamento || null, valor, observacoes || null, req.usuario.id, unidade_fabril || null]
     )
     res.status(201).json({ ...rows[0], valor: Number(rows[0].valor) })
   } catch (err) {
