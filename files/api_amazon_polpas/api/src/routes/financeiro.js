@@ -100,7 +100,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
   try {
     const p = unidade ? [unidade] : []
     const fDev = unidade ? 'AND c.unidade_fabril = $1' : ''
-    const fPag = unidade ? 'WHERE unidade_fabril = $1' : ''
+    const fPag = '' // pagamentos nao tem unidade: o acerto e por fornecedor
     const { rows } = await pool.query(
       `WITH devido AS (
          SELECT l.fornecedor_id,
@@ -202,7 +202,7 @@ router.get('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
     }
     const { rows } = await pool.query(
       `SELECT pg.id, pg.fornecedor_id, f.nome AS fornecedor,
-              pg.data_pagamento, pg.valor, pg.observacoes, pg.criado_em, pg.unidade_fabril,
+              pg.data_pagamento, pg.valor, pg.observacoes, pg.criado_em,
               u.nome AS registrado_por_nome
        FROM pagamentos pg
        JOIN fornecedores f ON f.id = pg.fornecedor_id
@@ -220,7 +220,7 @@ router.get('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
 
 // POST /financeiro/pagamentos
 router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => {
-  const { fornecedor_id, data_pagamento, valor, observacoes, unidade_fabril } = req.body
+  const { fornecedor_id, data_pagamento, valor, observacoes } = req.body
   if (!fornecedor_id || !valor)
     return res.status(400).json({ erro: 'Fornecedor e valor sao obrigatorios.' })
   if (Number(valor) <= 0)
@@ -228,10 +228,10 @@ router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => 
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO pagamentos (fornecedor_id, data_pagamento, valor, observacoes, registrado_por, unidade_fabril)
+      `INSERT INTO pagamentos (fornecedor_id, data_pagamento, valor, observacoes, registrado_por)
        VALUES ($1, COALESCE($2, CURRENT_DATE), $3, $4, $5, $6)
        RETURNING *`,
-      [fornecedor_id, data_pagamento || null, valor, observacoes || null, req.usuario.id, unidade_fabril || null]
+      [fornecedor_id, data_pagamento || null, valor, observacoes || null, req.usuario.id]
     )
     res.status(201).json({ ...rows[0], valor: Number(rows[0].valor) })
   } catch (err) {
