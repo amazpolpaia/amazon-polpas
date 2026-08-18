@@ -471,7 +471,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="card-title">Registrar pagamento</div>
     <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
       <div class="fg" style="flex:2;min-width:180px;margin-bottom:0"><label class="fl">Fornecedor</label><select class="fi" id="p12forn"></select></div>
-      <div class="fg" style="flex:1;min-width:150px;margin-bottom:0"><label class="fl">Unidade fabril</label><select class="fi" id="p12unid"></select></div><div class="fg" style="flex:1;min-width:130px;margin-bottom:0"><label class="fl">Data</label><input class="fi" type="date" id="p12data"></div>
+      <div class="fg" style="flex:1;min-width:130px;margin-bottom:0"><label class="fl">Data</label><input class="fi" type="date" id="p12data"></div>
       <div class="fg" style="flex:1;min-width:120px;margin-bottom:0"><label class="fl">Valor (R$)</label><input class="fi" type="number" id="p12valor" placeholder="ex: 5000.00"></div>
       <div class="fg" style="flex:2;min-width:160px;margin-bottom:0"><label class="fl">Observação</label><input class="fi" id="p12obs" placeholder="opcional"></div>
       <button class="btn btn-p" onclick="registrarPagamento()">Lançar</button>
@@ -945,10 +945,9 @@ async function loadS12(){
     const un=document.getElementById('f12unid').value
     const d=await req('GET','/financeiro/saldos'+(un?'?unidade='+encodeURIComponent(un):''))
     const lista=d.fornecedores||[], res=d.resumo||{}, meses=d.por_mes||[]
-    const selF=document.getElementById('f12unid'), selP=document.getElementById('p12unid')
+    const selF=document.getElementById('f12unid')
     if(d.unidades&&d.unidades.length){
       if(selF.options.length<=1){selF.innerHTML='<option value="">Todas</option>'+d.unidades.map(u=>`<option value="${u}">${rotuloUnidade(u)}</option>`).join('');selF.value=un}
-      if(!selP.options.length)selP.innerHTML=d.unidades.map(u=>`<option value="${u}">${rotuloUnidade(u)}</option>`).join('')
     }
     const kpis=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:20px">${[
       {label:'TOTAL DEVIDO',val:'R$ '+fmtBRLg(res.total_devido,2),sub:'todos os lotes',color:'var(--purple)'},
@@ -961,11 +960,10 @@ async function loadS12(){
   }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
 }
 async function registrarPagamento(){
-  const fid=document.getElementById('p12forn').value, valor=document.getElementById('p12valor').value, uni=document.getElementById('p12unid').value
+  const fid=document.getElementById('p12forn').value, valor=document.getElementById('p12valor').value
   if(!fid||!valor){alert('Informe fornecedor e valor.');return}
-  if(!uni){alert('Selecione a unidade fabril do pagamento.');return}
   try{
-    await req('POST','/financeiro/pagamentos',{fornecedor_id:parseInt(fid),data_pagamento:document.getElementById('p12data').value||null,valor:parseFloat(valor),observacoes:document.getElementById('p12obs').value||null,unidade_fabril:uni})
+    await req('POST','/financeiro/pagamentos',{fornecedor_id:parseInt(fid),data_pagamento:document.getElementById('p12data').value||null,valor:parseFloat(valor),observacoes:document.getElementById('p12obs').value||null})
     document.getElementById('p12valor').value='';document.getElementById('p12obs').value=''
     ok('ok12');loadS12()
   }catch(e){alert('Erro: '+e.message)}
