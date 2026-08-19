@@ -152,7 +152,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
               COALESCE(SUM(valor), 0) AS valor
        FROM pagamentos ${fPag}
        GROUP BY 1`,
-      p
+      []
     )
     const mapa = {}
     dm.forEach((x) => { mapa[x.mes] = { mes: x.mes, devido: Number(x.valor), pago: 0 } })
@@ -162,15 +162,30 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
     })
     const porMes = Object.values(mapa).sort((a, b) => a.mes.localeCompare(b.mes))
 
-    // Comprado por unidade fabril (sempre todas, para comparar)
+    // Comprado por unidade fabril. O pagamento nao tem unidade, entao e rateado
+    // na proporcao do que cada unidade deve aquele fornecedor.
     const { rows: pu } = await pool.query(
-      `SELECT COALESCE(c.unidade_fabril, 'nao_informado') AS unidade,
-              COUNT(*)                        AS lotes,
-              COALESCE(SUM(${SQL_DEVIDO}), 0)   AS total_comprado
-       FROM lotes l
-       JOIN compras c ON c.lote_id = l.id
-       JOIN recepcoes r ON r.lote_id = l.id
-       WHERE COALESCE(l.status, '') <> 'cancelado'
+      `WITH dev AS (
+         SELECT l.fornecedor_id,
+                COALESCE(c.unidade_fabril, 'nao_informado') AS unidade,
+                COUNT(*)                       AS lotes,
+                COALESCE(SUM(${SQL_DEVIDO}), 0)  AS devido
+         FROM lotes l
+         JOIN compras c ON c.lote_id = l.id
+         JOIN recepcoes r ON r.lote_id = l.id
+         WHERE COALESCE(l.status, '') <> 'cancelado'
+         GROUP BY 1, 2
+       ),
+       tot AS (SELECT fornecedor_id, SUM(devido) AS devido_forn FROM dev GROUP BY 1),
+       pag AS (SELECT fornecedor_id, COALESCE(SUM(valor), 0) AS pago FROM pagamentos GROUP BY 1)
+       SELECT d.unidade,
+              SUM(d.lotes)                     AS lotes,
+              SUM(d.devido)                    AS total_comprado,
+              COALESCE(SUM(CASE WHEN t.devido_forn > 0
+                THEN COALESCE(p.pago, 0) * d.devido / t.devido_forn ELSE 0 END), 0) AS total_pago
+       FROM dev d
+       JOIN tot t ON t.fornecedor_id = d.fornecedor_id
+       LEFT JOIN pag p ON p.fornecedor_id = d.fornecedor_id
        GROUP BY 1 ORDER BY total_comprado DESC`
     )
 
@@ -191,6 +206,8 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
         unidade: u.unidade,
         lotes: Number(u.lotes),
         total_comprado: Number(u.total_comprado),
+        total_pago: Number(Number(u.total_pago).toFixed(2)),
+        saldo: Number((Number(u.total_comprado) - Number(u.total_pago)).toFixed(2)),
       })),
       resumo: {
         total_devido: Number(lista.reduce((s, x) => s + x.total_devido, 0).toFixed(2)),
