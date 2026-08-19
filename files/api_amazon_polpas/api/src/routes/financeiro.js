@@ -264,7 +264,7 @@ router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => 
   try {
     const { rows } = await pool.query(
       `INSERT INTO pagamentos (fornecedor_id, data_pagamento, valor, observacoes, registrado_por)
-       VALUES ($1, COALESCE($2, CURRENT_DATE), $3, $4, $5, $6)
+       VALUES ($1, COALESCE($2, CURRENT_DATE), $3, $4, $5)
        RETURNING *`,
       [fornecedor_id, data_pagamento || null, valor, observacoes || null, req.usuario.id]
     )
