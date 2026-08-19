@@ -970,14 +970,31 @@ async function registrarPagamento(){
     ok('ok12');loadS12()
   }catch(e){alert('Erro: '+e.message)}
 }
+let EXTRATO_ATUAL={fid:null,nome:''}
 async function verPagamentos(fid,nome){
+  EXTRATO_ATUAL={fid,nome}
   const el=document.getElementById('f12extrato')
   el.innerHTML='<div class="card"><div class="ls">Carregando...</div></div>'
   try{
     const r=await req('GET','/financeiro/pagamentos?fornecedor_id='+fid)
     if(!r.length){el.innerHTML='<div class="card"><div class="ls">Nenhum pagamento lançado para '+nome+'.</div></div>';return}
-    el.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📄 Extrato — ${nome}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Data','Valor','Observação','Registrado por',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead><tbody>${r.map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">${fmtDataBR(x.data_pagamento)}</td><td style="padding:9px 12px;font-weight:700">R$ ${fmtBRLg(x.valor,2)}</td><td style="padding:9px 12px;color:var(--text2)">${x.observacoes||'—'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.registrado_por_nome||'—'}</td><td style="padding:9px 12px"><button class="btn" style="padding:4px 10px;font-size:11px;color:var(--red)" onclick="excluirPagamento('${x.id}')">Excluir</button></td></tr>`).join('')}</tbody></table></div></div>`
+    el.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">📄 Extrato — ${nome}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Data','Valor','Observação','Registrado por',''].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase">${c}</th>`).join('')}</tr></thead><tbody>${r.map(x=>`<tr style="border-top:1px solid var(--border)"><td style="padding:9px 12px">${fmtDataBR(x.data_pagamento)}</td><td style="padding:9px 12px;font-weight:700">R$ ${fmtBRLg(x.valor,2)}</td><td style="padding:9px 12px;color:var(--text2)">${x.observacoes||'—'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.registrado_por_nome||'—'}</td><td style="padding:9px 12px;white-space:nowrap"><button class="btn" style="padding:4px 10px;font-size:11px;margin-right:6px" onclick="corrigirPagamento('${x.id}',${Number(x.valor)},'${(x.data_pagamento||'').slice(0,10)}','${String(x.observacoes||'').replace(/'/g,"\\'")}')">Corrigir</button><button class="btn" style="padding:4px 10px;font-size:11px;color:var(--red)" onclick="excluirPagamento('${x.id}')">Excluir</button></td></tr>`).join('')}</tbody></table></div></div>`
   }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+async function corrigirPagamento(id,valorAtual,dataAtual,obsAtual){
+  const v=prompt('Valor do pagamento (R$):',String(valorAtual))
+  if(v===null)return
+  const num=parseFloat(String(v).replace(',','.'))
+  if(!(num>0)){alert('Informe um valor maior que zero.');return}
+  const dt=prompt('Data do pagamento (AAAA-MM-DD):',dataAtual||'')
+  if(dt===null)return
+  const ob=prompt('Observacao (opcional):',obsAtual||'')
+  if(ob===null)return
+  try{
+    await req('PUT','/financeiro/pagamentos/'+id,{valor:num,data_pagamento:dt||null,observacoes:ob})
+    await loadS12()
+    if(EXTRATO_ATUAL.fid)verPagamentos(EXTRATO_ATUAL.fid,EXTRATO_ATUAL.nome)
+  }catch(e){alert('Erro: '+e.message)}
 }
 async function excluirPagamento(id){
   if(!confirm('Excluir este pagamento?'))return
