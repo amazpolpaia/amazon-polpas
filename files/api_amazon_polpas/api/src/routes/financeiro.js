@@ -275,6 +275,30 @@ router.post('/pagamentos', autenticar, autorizarFinanceiro, async (req, res) => 
   }
 })
 
+// PUT /financeiro/pagamentos/:id - corrige um lancamento
+router.put('/pagamentos/:id', autenticar, autorizarFinanceiro, async (req, res) => {
+  const { data_pagamento, valor, observacoes } = req.body
+  if (valor !== undefined && Number(valor) <= 0)
+    return res.status(400).json({ erro: 'O valor deve ser maior que zero.' })
+  try {
+    const { rows } = await pool.query(
+      `UPDATE pagamentos SET
+         data_pagamento = COALESCE($1, data_pagamento),
+         valor          = COALESCE($2, valor),
+         observacoes    = COALESCE($3, observacoes)
+       WHERE id = $4
+       RETURNING *`,
+      [data_pagamento || null, valor === undefined || valor === '' ? null : valor,
+       observacoes === undefined ? null : observacoes, req.params.id]
+    )
+    if (!rows.length) return res.status(404).json({ erro: 'Pagamento nao encontrado.' })
+    res.json({ ...rows[0], valor: Number(rows[0].valor) })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao corrigir pagamento.' })
+  }
+})
+
 // DELETE /financeiro/pagamentos/:id
 router.delete('/pagamentos/:id', autenticar, autorizarFinanceiro, async (req, res) => {
   try {
