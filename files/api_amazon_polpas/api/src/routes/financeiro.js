@@ -106,6 +106,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
       `WITH devido AS (
          SELECT l.fornecedor_id,
                 COUNT(*)                    AS lotes,
+                COALESCE(SUM(r.qtd_latas_recebidas), 0) AS latas,
                 COALESCE(SUM(${SQL_DEVIDO}), 0) AS total_devido,
                 MAX(DATE(l.data_operacao))  AS ultimo_lote
          FROM lotes l
@@ -124,6 +125,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
        SELECT f.id                                   AS fornecedor_id,
               f.nome                                 AS fornecedor,
               COALESCE(d.lotes, 0)                   AS lotes,
+              COALESCE(d.latas, 0)                   AS latas,
               COALESCE(d.total_devido, 0)            AS total_devido,
               COALESCE(p.total_pago, 0)              AS total_pago,
               COALESCE(d.total_devido, 0) - COALESCE(p.total_pago, 0) AS saldo,
@@ -196,6 +198,7 @@ router.get('/saldos', autenticar, autorizarFinanceiro, async (req, res) => {
 
     const lista = rows.map((x) => ({
       ...x,
+      latas: Number(x.latas || 0),
       total_devido: Number(x.total_devido),
       total_pago: Number(x.total_pago),
       saldo: Number(x.saldo),
