@@ -48,7 +48,7 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
         lote_id, fornecedor_id,
         data_negociacao || new Date().toISOString().split('T')[0],
         data_entrega_prev, qtd_latas_prevista, preco_por_lata,
-        regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id,
+        regiao ? String(regiao).trim() : null, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id,
         placa ? String(placa).toUpperCase().trim() : null, !!frete_no_saldo
       ]
     )
@@ -57,6 +57,20 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
     if (err.code === '23505')
       return res.status(409).json({ erro: 'Este lote já tem uma compra registrada.' })
     res.status(500).json({ erro: 'Erro ao registrar compra.' })
+  }
+})
+
+// GET /compras/regioes - lista as regioes ja usadas, para o autocompletar
+router.get('/regioes', autenticar, async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT TRIM(regiao) AS regiao FROM compras
+       WHERE regiao IS NOT NULL AND TRIM(regiao) <> ''
+       ORDER BY 1`
+    )
+    res.json(rows.map((r) => r.regiao))
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao listar regioes.' })
   }
 })
 
@@ -101,7 +115,7 @@ router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
               placa=$8, frete_no_saldo=COALESCE($9, frete_no_saldo),
               total_ajustado = CASE WHEN qtd_latas_prevista IS DISTINCT FROM $1::int OR ROUND(preco_por_lata,2) IS DISTINCT FROM ROUND($2::numeric,2) THEN NULL ELSE total_ajustado END
        WHERE lote_id=$7 RETURNING *`,
-      [qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
+      [qtd_latas_prevista, preco_por_lata, regiao ? String(regiao).trim() : null, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
        placa ? String(placa).toUpperCase().trim() : null,
        frete_no_saldo === undefined ? null : !!frete_no_saldo]
     )
