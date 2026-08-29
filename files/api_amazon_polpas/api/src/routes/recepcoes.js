@@ -30,6 +30,12 @@ router.post('/', autenticar, autorizar('gerente', 'recepcao'), async (req, res) 
       ]
     )
 
+    // A recepcao conclui a descarga e libera o despolpamento
+    await pool.query(
+      "UPDATE lotes SET status='descarregado', atualizado_em=NOW() WHERE id=$1",
+      [lote_id]
+    )
+
     const resultado = { ...rows[0] }
 
     if (compra) {
