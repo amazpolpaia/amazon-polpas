@@ -34,6 +34,7 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
     const { rows } = await pool.query(
       `SELECT
          UPPER(TRIM(pc.placa_veiculo))                     AS placa,
+         COALESCE(c.tipo_frete, 'nao_informado')           AS tipo_frete,
          COUNT(DISTINCT l.id)                              AS lotes,
          COUNT(DISTINCT DATE(l.data_operacao))             AS viagens,
          COALESCE(SUM(COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista)), 0) AS latas,
@@ -48,7 +49,7 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
        LEFT JOIN recepcoes r ON r.lote_id = l.id
        JOIN pesagens_chegada pc ON pc.lote_id = l.id
        ${filtro}
-       GROUP BY UPPER(TRIM(pc.placa_veiculo))
+       GROUP BY UPPER(TRIM(pc.placa_veiculo)), COALESCE(c.tipo_frete, 'nao_informado')
        ORDER BY total_frete DESC`,
       params
     )
@@ -63,6 +64,22 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
        JOIN pesagens_chegada pc ON pc.lote_id = l.id
        ${filtro}
        GROUP BY 1 ORDER BY 1`,
+      params
+    )
+
+    // Resumo por tipo de frete (mesmos filtros)
+    const { rows: tipos } = await pool.query(
+      `SELECT COALESCE(c.tipo_frete, 'nao_informado')          AS tipo,
+              COUNT(DISTINCT l.id)                             AS lotes,
+              COUNT(DISTINCT UPPER(TRIM(pc.placa_veiculo)))    AS placas,
+              COALESCE(SUM(COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista)), 0) AS latas,
+              COALESCE(SUM(COALESCE(c.valor_frete, 0)), 0)     AS total_frete
+       FROM lotes l
+       JOIN compras c ON c.lote_id = l.id
+       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       JOIN pesagens_chegada pc ON pc.lote_id = l.id
+       ${filtro}
+       GROUP BY 1 ORDER BY total_frete DESC`,
       params
     )
 
@@ -87,6 +104,14 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
         frete_por_lata: Number(m.latas) > 0 ? Number((Number(m.total_frete) / Number(m.latas)).toFixed(2)) : null,
       })),
       unidades: unidades.map((u) => u.unidade),
+      por_tipo: tipos.map((t) => ({
+        tipo: t.tipo,
+        lotes: Number(t.lotes),
+        placas: Number(t.placas),
+        latas: Number(t.latas),
+        total_frete: Number(t.total_frete),
+        frete_por_lata: Number(t.latas) > 0 ? Number((Number(t.total_frete) / Number(t.latas)).toFixed(2)) : null,
+      })),
     })
   } catch (err) {
     console.error(err)
