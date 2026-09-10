@@ -136,7 +136,11 @@ router.post('/rendimento', autenticar, autorizar('gerente', 'producao'), async (
        FROM lotes l
        JOIN compras        c ON c.lote_id = l.id
        JOIN recepcoes      r ON r.lote_id = l.id
-       JOIN despolpamentos d ON d.lote_id = l.id
+       JOIN (SELECT lote_id, SUM(litros_extraidos) AS litros_extraidos,
+                    SUM(latas_processadas) AS latas_processadas,
+                    CASE WHEN SUM(latas_processadas) > 0
+                         THEN ROUND(SUM(litros_extraidos)/SUM(latas_processadas), 2) END AS rendimento_l_lata
+             FROM despolpamentos GROUP BY lote_id) d ON d.lote_id = l.id
        WHERE l.id = $1`,
       [lote_id]
     )
