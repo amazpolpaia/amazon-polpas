@@ -202,7 +202,19 @@ router.get('/periodo', autenticar, async (req, res) => {
       LEFT JOIN pesagens_chegada pc ON pc.lote_id = l.id
       LEFT JOIN pesagens_saida ps ON ps.lote_id = l.id
       LEFT JOIN recepcoes r ON r.lote_id = l.id
-      LEFT JOIN despolpamentos d ON d.lote_id = l.id
+      LEFT JOIN (
+        SELECT lote_id,
+               SUM(latas_processadas)                         AS latas_processadas,
+               SUM(litros_extraidos)                          AS litros_extraidos,
+               CASE WHEN SUM(latas_processadas) > 0
+                    THEN ROUND(SUM(litros_extraidos)/SUM(latas_processadas), 2) END AS rendimento_l_lata,
+               STRING_AGG(DISTINCT marca, ', ')               AS marca,
+               STRING_AGG(DISTINCT lote_produto, ', ')        AS lote_produto,
+               STRING_AGG(DISTINCT operador_nome, ', ')       AS operador_nome,
+               STRING_AGG(DISTINCT solidos_totais, ', ')      AS solidos_totais,
+               COUNT(*)                                       AS qtd_itens
+        FROM despolpamentos GROUP BY lote_id
+      ) d ON d.lote_id = l.id
       WHERE DATE(l.data_operacao) BETWEEN $1 AND $2
       ORDER BY l.data_operacao, f.nome
     `, [inicio, fim])
