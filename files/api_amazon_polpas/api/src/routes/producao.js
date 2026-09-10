@@ -9,7 +9,7 @@ const { respostaComValores } = require('../utils/valores')
 router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
   let {
     lote_id, latas_processadas, litros_extraidos,
-    turno, operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, solidos_totais, marca
+    turno, operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, solidos_totais, marca, produto
   } = req.body
 
   if (!lote_id || !litros_extraidos)
@@ -31,16 +31,32 @@ router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), asyn
   if (litros_extraidos <= 0 || latas_processadas <= 0)
     return res.status(400).json({ erro: 'Valores devem ser maiores que zero.' })
 
+  // Um lote pode ter varios itens (produtos). A soma das latas consumidas
+  // nao pode passar do que foi aferido na recepcao.
+  const { rows: [saldo] } = await pool.query(
+    `SELECT COALESCE(r.qtd_latas_recebidas, 0) AS recebidas,
+            COALESCE((SELECT SUM(latas_processadas) FROM despolpamentos WHERE lote_id=$1), 0) AS ja_usadas
+     FROM lotes l LEFT JOIN recepcoes r ON r.lote_id = l.id WHERE l.id=$1`,
+    [lote_id]
+  )
+  if (saldo && Number(saldo.recebidas) > 0) {
+    const disponivel = Number(saldo.recebidas) - Number(saldo.ja_usadas)
+    if (Number(latas_processadas) > disponivel)
+      return res.status(400).json({
+        erro: `Saldo insuficiente: restam ${disponivel} lata(s) deste lote (recebidas ${saldo.recebidas}, ja usadas ${saldo.ja_usadas}).`
+      })
+  }
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO despolpamentos
          (lote_id, latas_processadas, litros_extraidos, turno,
-          operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, solidos_totais, marca, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+          operador_nome, hora_inicio, hora_fim, observacoes, lote_produto, solidos_totais, marca, registrado_por, produto)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING *`,
       [
         lote_id, latas_processadas, litros_extraidos, turno||null,
-        operador_nome, hora_inicio, hora_fim, observacoes, lote_produto||null, solidos_totais||null, marca||null, req.usuario.id
+        operador_nome, hora_inicio, hora_fim, observacoes, lote_produto||null, solidos_totais||null, marca||null, req.usuario.id, produto||null
       ]
     )
 
@@ -52,8 +68,7 @@ router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), asyn
 
     res.status(201).json(rows[0])
   } catch (err) {
-    if (err.code === '23505')
-      return res.status(409).json({ erro: 'Despolpamento já registrado para este lote.' })
+    console.error(err)
     res.status(500).json({ erro: 'Erro ao registrar despolpamento.' })
   }
 })
