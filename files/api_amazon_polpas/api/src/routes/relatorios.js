@@ -230,7 +230,13 @@ router.get('/periodo', autenticar, async (req, res) => {
                ROUND(COALESCE(c.total_ajustado,
                      COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata
                      + COALESCE(c.valor_frete,0))::numeric * d.latas_processadas / tot.latas_lote, 2)
-             END AS total_estimado
+             END AS total_estimado,
+             CASE WHEN tot.latas_lote > 0 AND d.litros_extraidos > 0 THEN
+               ROUND((COALESCE(c.total_ajustado,
+                      COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata
+                      + COALESCE(c.valor_frete,0))::numeric * d.latas_processadas / tot.latas_lote)
+                     / d.litros_extraidos, 4)
+             END AS custo_por_litro
       FROM despolpamentos d
       JOIN lotes l ON l.id = d.lote_id
       JOIN fornecedores f ON f.id = l.fornecedor_id
