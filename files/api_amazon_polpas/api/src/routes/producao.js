@@ -74,6 +74,36 @@ router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), asyn
 })
 
 // GET /producao/despolpamento/:lote_id
+// GET /producao/itens/:lote_id - todos os itens do lote + saldo de latas
+router.get('/itens/:lote_id', autenticar, async (req, res) => {
+  try {
+    const { rows: itens } = await pool.query(
+      `SELECT id, produto, marca, lote_produto, latas_processadas, litros_extraidos,
+              rendimento_l_lata, solidos_totais, operador_nome, criado_em
+       FROM despolpamentos WHERE lote_id=$1 ORDER BY criado_em`,
+      [req.params.lote_id]
+    )
+    const { rows: [s] } = await pool.query(
+      `SELECT COALESCE(r.qtd_latas_recebidas, 0) AS recebidas,
+              COALESCE((SELECT SUM(latas_processadas) FROM despolpamentos WHERE lote_id=$1), 0) AS usadas
+       FROM lotes l LEFT JOIN recepcoes r ON r.lote_id = l.id WHERE l.id=$1`,
+      [req.params.lote_id]
+    )
+    const recebidas = Number(s ? s.recebidas : 0)
+    const usadas = Number(s ? s.usadas : 0)
+    res.json({
+      itens,
+      recebidas,
+      usadas,
+      saldo: Math.max(0, recebidas - usadas),
+      total_kg: itens.reduce((a, x) => a + Number(x.litros_extraidos || 0), 0)
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao buscar itens do lote.' })
+  }
+})
+
 router.get('/despolpamento/:lote_id', autenticar, async (req, res) => {
   try {
     const { rows } = await pool.query(
