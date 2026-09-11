@@ -60,11 +60,22 @@ router.post('/despolpamento', autenticar, autorizar('gerente', 'producao'), asyn
       ]
     )
 
-    // Atualiza status do lote
-    await pool.query(
-      "UPDATE lotes SET status='despolpado', atualizado_em=NOW() WHERE id=$1",
+    // So marca como despolpado quando todas as latas foram consumidas.
+    // Enquanto houver saldo, o lote continua disponivel para outros produtos.
+    const { rows: [pos] } = await pool.query(
+      `SELECT COALESCE(r.qtd_latas_recebidas, 0) AS recebidas,
+              COALESCE((SELECT SUM(latas_processadas) FROM despolpamentos WHERE lote_id=$1), 0) AS usadas
+       FROM lotes l LEFT JOIN recepcoes r ON r.lote_id = l.id WHERE l.id=$1`,
       [lote_id]
     )
+    const recebidas = Number(pos ? pos.recebidas : 0)
+    const usadas = Number(pos ? pos.usadas : 0)
+    if (recebidas === 0 || usadas >= recebidas) {
+      await pool.query(
+        "UPDATE lotes SET status='despolpado', atualizado_em=NOW() WHERE id=$1",
+        [lote_id]
+      )
+    }
 
     res.status(201).json(rows[0])
   } catch (err) {
