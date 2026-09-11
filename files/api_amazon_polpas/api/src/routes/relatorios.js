@@ -219,6 +219,29 @@ router.get('/periodo', autenticar, async (req, res) => {
       ORDER BY l.data_operacao, f.nome
     `, [inicio, fim])
 
+    // Itens do despolpamento: uma linha por produto, custo rateado pelas latas
+    const { rows: itens } = await pool.query(`
+      SELECT DATE(l.data_operacao) AS data, l.id AS lote_id, l.codigo, f.nome AS fornecedor,
+             c.regiao, c.unidade_fabril, c.tipo_frete, c.valor_frete, c.preco_por_lata,
+             d.produto, d.marca, d.lote_produto, d.solidos_totais, d.operador_nome,
+             d.latas_processadas, d.litros_extraidos, d.rendimento_l_lata,
+             tot.latas_lote,
+             CASE WHEN tot.latas_lote > 0 THEN
+               ROUND(COALESCE(c.total_ajustado,
+                     COALESCE(r.qtd_latas_recebidas, c.qtd_latas_prevista) * c.preco_por_lata
+                     + COALESCE(c.valor_frete,0))::numeric * d.latas_processadas / tot.latas_lote, 2)
+             END AS total_estimado
+      FROM despolpamentos d
+      JOIN lotes l ON l.id = d.lote_id
+      JOIN fornecedores f ON f.id = l.fornecedor_id
+      LEFT JOIN compras c ON c.lote_id = l.id
+      LEFT JOIN recepcoes r ON r.lote_id = l.id
+      JOIN (SELECT lote_id, SUM(latas_processadas) AS latas_lote FROM despolpamentos GROUP BY lote_id) tot
+           ON tot.lote_id = d.lote_id
+      WHERE DATE(l.data_operacao) BETWEEN $1 AND $2
+      ORDER BY l.data_operacao, f.nome, d.criado_em
+    `, [inicio, fim])
+
     // 2. Totais gerais
     const lotesFin = lotes.filter(l => l.litros_extraidos)
 
@@ -294,6 +317,7 @@ router.get('/periodo', autenticar, async (req, res) => {
       },
       por_fornecedor:fornecedores,
       por_dia:porDiaArr,
+      itens_detalhado:itens,
       lotes_detalhado:lotes
     })
   } catch(err) {
