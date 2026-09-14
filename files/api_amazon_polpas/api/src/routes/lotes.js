@@ -91,7 +91,10 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
     )
     res.status(201).json(rows[0])
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao criar lote.' })
+    console.error(err)
+    if (err.code === '23505')
+      return res.status(409).json({ erro: 'Já existe um lote com este código. Tente novamente.' })
+    res.status(500).json({ erro: 'Erro ao criar lote: ' + (err.message || 'falha desconhecida') })
   }
 })
 
