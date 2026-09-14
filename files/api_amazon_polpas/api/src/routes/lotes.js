@@ -12,15 +12,32 @@ async function gerarCodigo(fornecedor_id, data) {
   const { rows: [f] } = await pool.query(
     'SELECT nome FROM fornecedores WHERE id=$1', [fornecedor_id]
   )
-  const sigla = f.nome.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 3)
+  // Só letras e números viram sigla (evita hifen do nome virar parte do codigo)
+  const sigla = f.nome
+    .replace(/[^0-9A-Za-zÀ-ÿ]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(p => p[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 3) || 'X'
   const dataStr = data.replace(/-/g, '')
+  // A sequencia conta pelo prefixo do codigo, nao pelo fornecedor: dois
+  // fornecedores com a mesma sigla (ex.: Lenon e Lindolfo) compartilham a serie.
+  const prefixo = `LOTE-${dataStr}-${sigla}-`
   const { rows: [cnt] } = await pool.query(
-    `SELECT COUNT(*) FROM lotes
-     WHERE fornecedor_id=$1 AND data_operacao=$2`,
-    [fornecedor_id, data]
+    'SELECT COUNT(*) FROM lotes WHERE codigo LIKE $1',
+    [prefixo + '%']
   )
-  const seq = String(Number(cnt.count) + 1).padStart(3, '0')
-  return `LOTE-${dataStr}-${sigla}-${seq}`
+  let n = Number(cnt.count) + 1
+  // Garante unicidade mesmo se algum lote tiver sido apagado
+  for (let i = 0; i < 50; i++) {
+    const tentativa = prefixo + String(n).padStart(3, '0')
+    const { rows: [ex] } = await pool.query('SELECT 1 FROM lotes WHERE codigo=$1', [tentativa])
+    if (!ex) return tentativa
+    n++
+  }
+  return prefixo + Date.now().toString().slice(-5)
 }
 
 // GET /lotes?data=2025-05-20&fornecedor_id=1&status=aberto
