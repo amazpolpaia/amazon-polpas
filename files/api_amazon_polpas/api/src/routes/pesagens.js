@@ -11,16 +11,22 @@ router.post('/chegada', autenticar, autorizar('gerente', 'balanca'), async (req,
   if (!lote_id || !peso_bruto_kg)
     return res.status(400).json({ erro: 'lote_id e peso_bruto_kg são obrigatórios.' })
 
+  // Latas calculadas pela balanca: (bruto - tara) / 14, arredondado para baixo
+  const _bruto = Number(peso_bruto_kg), _tara = Number(tara_kg)
+  const latas_calculadas = (_bruto > 0 && _tara > 0 && _bruto > _tara)
+    ? Math.floor((_bruto - _tara) / 14)
+    : null
+
   try {
     const { rows } = await pool.query(
       `INSERT INTO pesagens_chegada
-         (lote_id, placa_veiculo, hora_chegada, peso_bruto_kg, tara_kg, observacoes, registrado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+         (lote_id, placa_veiculo, hora_chegada, peso_bruto_kg, tara_kg, observacoes, registrado_por, latas_calculadas)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING *`,
       [
         lote_id, placa_veiculo,
         hora_chegada || new Date(),
-        peso_bruto_kg, tara_kg, observacoes, req.usuario.id
+        peso_bruto_kg, tara_kg, observacoes, req.usuario.id, latas_calculadas
       ]
     )
 
@@ -164,7 +170,12 @@ router.put('/chegada/:lote_id', autenticar, autorizar('gerente'), async (req, re
   const { peso_bruto_kg, placa_veiculo } = req.body
   try {
     const { rows } = await pool.query(
-      `UPDATE pesagens_chegada SET peso_bruto_kg=$1, placa_veiculo=$2 WHERE lote_id=$3 RETURNING *`,
+      `UPDATE pesagens_chegada
+          SET peso_bruto_kg=$1, placa_veiculo=$2,
+              latas_calculadas = CASE WHEN tara_kg > 0 AND $1::numeric > tara_kg
+                                      THEN FLOOR(($1::numeric - tara_kg) / 14)::int
+                                      ELSE NULL END
+        WHERE lote_id=$3 RETURNING *`,
       [peso_bruto_kg, placa_veiculo, req.params.lote_id]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Pesagem de chegada não encontrada.' })
