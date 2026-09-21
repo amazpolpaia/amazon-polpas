@@ -35,6 +35,10 @@ const MIGRACOES = [
     'CREATE INDEX IF NOT EXISTS idx_pagamentos_fornecedor ON pagamentos(fornecedor_id)',
   ],
   [
+    'pesagens_chegada.latas_calculadas',
+    'ALTER TABLE pesagens_chegada ADD COLUMN IF NOT EXISTS latas_calculadas INT',
+  ],
+  [
     'idx_pagamentos_data',
     'CREATE INDEX IF NOT EXISTS idx_pagamentos_data ON pagamentos(data_pagamento)',
   ],
