@@ -83,6 +83,29 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
       params
     )
 
+    // Extrato: uma linha por lote (frete rateado), para auditoria por viagem (placa + data)
+    const { rows: fretes } = await pool.query(
+      `SELECT l.id                                         AS lote_id,
+              l.codigo                                     AS lote,
+              TO_CHAR(DATE(l.data_operacao), 'YYYY-MM-DD') AS data,
+              UPPER(TRIM(pc.placa_veiculo))                AS placa,
+              COALESCE(c.tipo_frete, 'nao_informado')      AS tipo_frete,
+              f.nome                                       AS fornecedor,
+              c.unidade_fabril,
+              r.qtd_latas_recebidas,
+              c.qtd_latas_prevista,
+              COALESCE(c.valor_frete, 0)                   AS valor_frete,
+              COALESCE(c.frete_no_saldo, FALSE)            AS frete_no_saldo
+       FROM lotes l
+       JOIN compras c ON c.lote_id = l.id
+       JOIN fornecedores f ON f.id = l.fornecedor_id
+       LEFT JOIN recepcoes r ON r.lote_id = l.id
+       JOIN pesagens_chegada pc ON pc.lote_id = l.id
+       ${filtro}
+       ORDER BY DATE(l.data_operacao) DESC, UPPER(TRIM(pc.placa_veiculo)), l.codigo`,
+      params
+    )
+
     // Unidades fabris disponiveis para o seletor
     const { rows: unidades } = await pool.query(
       `SELECT DISTINCT c.unidade_fabril AS unidade
@@ -104,6 +127,12 @@ router.get('/fretes-placa', autenticar, autorizarFinanceiro, async (req, res) =>
         frete_por_lata: Number(m.latas) > 0 ? Number((Number(m.total_frete) / Number(m.latas)).toFixed(2)) : null,
       })),
       unidades: unidades.map((u) => u.unidade),
+      fretes: fretes.map((x) => ({
+        ...x,
+        qtd_latas_recebidas: x.qtd_latas_recebidas != null ? Number(x.qtd_latas_recebidas) : null,
+        qtd_latas_prevista: x.qtd_latas_prevista != null ? Number(x.qtd_latas_prevista) : null,
+        valor_frete: Number(x.valor_frete),
+      })),
       por_tipo: tipos.map((t) => ({
         tipo: t.tipo,
         lotes: Number(t.lotes),
