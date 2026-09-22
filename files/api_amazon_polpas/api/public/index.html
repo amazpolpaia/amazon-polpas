@@ -1007,9 +1007,71 @@ async function loadS11(){
       {label:'FRETE MEDIO/LATA',val:totL>0?'R$ '+fmtBRLg(totF/totL,2):'-',sub:'media ponderada',color:'var(--yellow)'}
     ].map(k=>`<div style="background:#fff;border-radius:12px;padding:16px;border-top:4px solid ${k.color};box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div><div style="font-size:11px;color:var(--text3);margin-top:4px">${k.sub}</div></div>`).join('')}</div>`
     const grafico=meses.length?`<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Frete por mes</div>${barrasMensais(meses,'total_frete','R$ ')}</div>`:''
-    const tab=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Desempenho por placa</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Placa','Tipo de frete','Lotes','Latas','Frete total','Frete/lata','Periodo','Unidade','Fornecedores'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${r.map((x,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(255,193,7,.08)':''}"><td style="padding:9px 12px;font-weight:700;font-family:monospace">${x.placa}</td><td style="padding:9px 12px">${rotuloFrete(x.tipo_frete)}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">${fmtBRLg(x.latas,0)}</td><td style="padding:9px 12px;font-weight:600">R$ ${fmtBRLg(x.total_frete,2)}</td><td style="padding:9px 12px;font-weight:700;color:var(--purple)">${x.frete_por_lata!=null?'R$ '+fmtBRLg(x.frete_por_lata,2):'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.primeira_viagem)} a ${fmtDataBR(x.ultima_viagem)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${(x.unidades||'').split(', ').map(rotuloUnidade).join(', ')||'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.fornecedores||'-'}</td></tr>`).join('')}</tbody></table></div></div>`
-    el.innerHTML=kpis+grafico+tab
+    const tab=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">Desempenho por placa</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--bg3)">${['Placa','Tipo de frete','Lotes','Latas','Frete total','Frete/lata','Periodo','Unidade','Fornecedores'].map(c=>`<th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')}</tr></thead><tbody>${r.map((x,i)=>`<tr style="border-top:1px solid var(--border);background:${i===0?'rgba(255,193,7,.08)':''}"><td style="padding:9px 12px;font-weight:700;font-family:monospace"><span onclick="filtrarPlaca11('${x.placa}')" title="Ver fretes desta placa no extrato" style="cursor:pointer;border-bottom:1px dashed var(--purple);color:var(--purple)">${x.placa}</span></td><td style="padding:9px 12px">${rotuloFrete(x.tipo_frete)}</td><td style="padding:9px 12px">${x.lotes}</td><td style="padding:9px 12px">${fmtBRLg(x.latas,0)}</td><td style="padding:9px 12px;font-weight:600">R$ ${fmtBRLg(x.total_frete,2)}</td><td style="padding:9px 12px;font-weight:700;color:var(--purple)">${x.frete_por_lata!=null?'R$ '+fmtBRLg(x.frete_por_lata,2):'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${fmtDataBR(x.primeira_viagem)} a ${fmtDataBR(x.ultima_viagem)}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${(x.unidades||'').split(', ').map(rotuloUnidade).join(', ')||'-'}</td><td style="padding:9px 12px;font-size:12px;color:var(--text2)">${x.fornecedores||'-'}</td></tr>`).join('')}</tbody></table></div></div>`
+    window._f11fretes=d.fretes||[]
+    el.innerHTML=kpis+grafico+tab+'<div id="f11extrato" style="margin-top:16px"></div>'
+    renderExtrato11()
   }catch(e){el.innerHTML='<div class="card"><div class="ls">'+e.message+'</div></div>'}
+}
+// S11: EXTRATO DE FRETES (auditoria por viagem = placa + data; frete rateado entre lotes)
+window._f11filtro=window._f11filtro||{placa:'',tipo:'',alerta:false}
+function esc11(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function latas11(x){return x.qtd_latas_recebidas!=null?{n:Number(x.qtd_latas_recebidas),prev:false}:{n:Number(x.qtd_latas_prevista||0),prev:true}}
+function viagens11(fretes){
+  const medPlaca={}
+  for(const x of fretes){const m=medPlaca[x.placa]=medPlaca[x.placa]||{f:0,l:0};m.f+=Number(x.valor_frete||0);m.l+=latas11(x).n}
+  const mapa={},ordem=[]
+  for(const x of fretes){const k=x.placa+'|'+x.data;if(!mapa[k]){mapa[k]={chave:k,placa:x.placa,data:x.data,lotes:[],frete:0,latas:0};ordem.push(mapa[k])}const v=mapa[k];v.lotes.push(x);v.frete+=Number(x.valor_frete||0);v.latas+=latas11(x).n}
+  for(const v of ordem){
+    const al=[],tipos=[...new Set(v.lotes.map(x=>x.tipo_frete))]
+    const comF=v.lotes.filter(x=>Number(x.valor_frete)>0).length
+    if(v.lotes.length>1&&comF>0&&comF<v.lotes.length)al.push('Rateio incompleto')
+    if(tipos.length>1)al.push('Tipo divergente na viagem')
+    if(v.frete===0&&tipos.some(t=>t==='terceiro'||t==='fornecedor'))al.push('Terceiro/fornecedor sem frete')
+    const m=medPlaca[v.placa],med=m&&m.l>0?m.f/m.l:0,fl=v.latas>0?v.frete/v.latas:0
+    if(med>0&&fl>med*1.5)al.push('Frete/lata atípico (média placa R$ '+med.toFixed(2).replace('.',',')+')')
+    v.tipos=tipos;v.alertas=al;v.freteLata=v.latas>0?v.frete/v.latas:null
+  }
+  return ordem
+}
+function filtrarPlaca11(p){window._f11filtro.placa=p;renderExtrato11();const e=document.getElementById('f11extrato');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})}
+function setFiltro11(k,v){window._f11filtro[k]=v;renderExtrato11()}
+function viagensFiltradas11(){
+  const F=window._f11filtro,todas=viagens11(window._f11fretes||[])
+  return todas.filter(v=>(!F.placa||v.placa===F.placa)&&(!F.tipo||v.tipos.includes(F.tipo))&&(!F.alerta||v.alertas.length))
+}
+function renderExtrato11(){
+  const box=document.getElementById('f11extrato');if(!box)return
+  const fretes=window._f11fretes||[],F=window._f11filtro
+  if(!fretes.length){box.innerHTML='';return}
+  const todas=viagens11(fretes),vs=viagensFiltradas11()
+  const placas=[...new Set(fretes.map(x=>x.placa))].sort(),tiposAll=[...new Set(fretes.map(x=>x.tipo_frete))]
+  if(F.placa&&!placas.includes(F.placa))F.placa=''
+  const nAl=todas.filter(v=>v.alertas.length).length
+  const totF=vs.reduce((s,v)=>s+v.frete,0),totL=vs.reduce((s,v)=>s+v.latas,0),totLotes=vs.reduce((s,v)=>s+v.lotes.length,0)
+  const td='padding:7px 10px;border-top:1px solid var(--border)'
+  const filtros=`<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+    <select class="fi" style="width:auto;min-width:130px" onchange="setFiltro11('placa',this.value)"><option value="">Todas as placas</option>${placas.map(p=>`<option value="${esc11(p)}" ${p===F.placa?'selected':''}>${esc11(p)}</option>`).join('')}</select>
+    <select class="fi" style="width:auto;min-width:150px" onchange="setFiltro11('tipo',this.value)"><option value="">Todos os tipos</option>${tiposAll.map(t=>`<option value="${esc11(t)}" ${t===F.tipo?'selected':''}>${rotuloFrete(t)}</option>`).join('')}</select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" ${F.alerta?'checked':''} onchange="setFiltro11('alerta',this.checked)"> Só viagens com alerta (${nAl})</label>
+    <button class="btn" style="margin-left:auto;padding:6px 12px;font-size:12px" onclick="exportarFretes11()">⬇ Exportar CSV</button></div>`
+  const cab=['Data / Lote','Placa','Fornecedor','Tipo','Unidade','Latas','Frete','Frete/lata','No saldo'].map(c=>`<th style="padding:8px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c}</th>`).join('')
+  const linhas=vs.map(v=>{
+    const alert=v.alertas.map(a=>`<span style="display:inline-block;background:rgba(245,197,24,.18);color:var(--yellow-dark);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;margin:2px 4px 0 0">⚠ ${esc11(a)}</span>`).join('')
+    const head=`<tr style="background:${v.alertas.length?'rgba(245,197,24,.10)':'var(--bg3)'}"><td style="${td};font-weight:800;white-space:nowrap">${fmtDataBR(v.data)}</td><td style="${td};font-weight:800;font-family:monospace">${esc11(v.placa)}</td><td style="${td};font-weight:700" colspan="3">Viagem · ${v.lotes.length} lote(s)${alert?'<div>'+alert+'</div>':''}</td><td style="${td};font-weight:700">${fmtBRLg(v.latas,0)}</td><td style="${td};font-weight:800;color:var(--purple);white-space:nowrap">R$ ${fmtBRLg(v.frete,2)}</td><td style="${td};font-weight:700;white-space:nowrap">${v.freteLata!=null?'R$ '+fmtBRLg(v.freteLata,2):'—'}</td><td style="${td}"></td></tr>`
+    const itens=v.lotes.map(x=>{const lt=latas11(x),vf=Number(x.valor_frete||0);return `<tr><td style="${td};padding-left:22px;font-size:12px;color:var(--text2);white-space:nowrap">${esc11(x.lote)}</td><td style="${td}"></td><td style="${td};font-size:12px">${esc11(x.fornecedor)}</td><td style="${td};font-size:12px">${rotuloFrete(x.tipo_frete)}</td><td style="${td};font-size:12px;color:var(--text2)">${rotuloUnidade(x.unidade_fabril)}</td><td style="${td};font-size:12px">${fmtBRLg(lt.n,0)}${lt.prev?' <span style="color:var(--text3);font-size:10px">prev.</span>':''}</td><td style="${td};font-size:12px;white-space:nowrap;${vf===0?'color:var(--text3)':''}">R$ ${fmtBRLg(vf,2)}</td><td style="${td};font-size:12px;white-space:nowrap">${lt.n>0?'R$ '+fmtBRLg(vf/lt.n,2):'—'}</td><td style="${td};font-size:12px">${x.frete_no_saldo?'Sim':'Não'}</td></tr>`}).join('')
+    return head+itens}).join('')
+  const rod=`<tr style="background:var(--green-light)"><td style="${td};font-weight:800" colspan="5">Total · ${vs.length} viagem(ns) · ${totLotes} lote(s)</td><td style="${td};font-weight:800">${fmtBRLg(totL,0)}</td><td style="${td};font-weight:800;white-space:nowrap">R$ ${fmtBRLg(totF,2)}</td><td style="${td};font-weight:800;white-space:nowrap">${totL>0?'R$ '+fmtBRLg(totF/totL,2):'—'}</td><td style="${td}"></td></tr>`
+  box.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:4px;color:var(--purple)">Extrato de fretes</div><div style="font-size:11px;color:var(--text3);margin-bottom:12px">Uma viagem = placa + data. O frete da viagem é a soma do rateio entre os lotes: confira contra o valor combinado com o freteiro.</div>${filtros}${vs.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>${cab}</tr></thead><tbody>${linhas}${rod}</tbody></table></div>`:'<div class="ls">Nenhuma viagem neste filtro.</div>'}</div>`
+}
+function exportarFretes11(){
+  if(typeof ocultaVal==='function'&&ocultaVal()){alert('Desative a ocultação de valores para exportar.');return}
+  const vs=viagensFiltradas11();if(!vs.length){alert('Nada para exportar.');return}
+  const n=(v,d)=>Number(v||0).toFixed(d).replace('.',','),q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"'
+  const L=[['Viagem','Data','Placa','Lote','Fornecedor','Tipo de frete','Unidade','Latas','Origem latas','Frete lote (R$)','Frete/lata (R$)','No saldo','Frete viagem (R$)','Lotes na viagem','Alertas da viagem'].map(q).join(';')]
+  for(const v of vs)for(const x of v.lotes){const lt=latas11(x),vf=Number(x.valor_frete||0);L.push([v.placa+' '+fmtDataBR(v.data),fmtDataBR(v.data),v.placa,x.lote,x.fornecedor,rotuloFrete(x.tipo_frete),rotuloUnidade(x.unidade_fabril),lt.n,lt.prev?'prevista':'recebida',n(vf,2),lt.n>0?n(vf/lt.n,4):'',x.frete_no_saldo?'Sim':'Não',n(v.frete,2),v.lotes.length,v.alertas.join(' | ')].map((c,i)=>[7,9,10,12,13].includes(i)?c:q(c)).join(';'))}
+  const blob=new Blob(['\ufeff'+L.join('\r\n')],{type:'text/csv;charset=utf-8'})
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='extrato-fretes-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)
 }
 function rotuloFrete(t){const m={terceiro:'Terceiro',proprio:'Carro Próprio',fornecedor:'Carro Fornecedor',outros:'Outros',nao_informado:'Não informado'};return m[t]||t||'—'}
 function rotuloUnidade(u){const m={amazon_polpas:'Amazon Polpas',amazon_filial:'Amazon Filial',granfruto:'Granfruto',cameta:'Cametá',cametaense:'Cametaense'};return m[u]||u||'-'}
