@@ -286,6 +286,15 @@ router.put('/despolpamento/:lote_id', autenticar, autorizar('gerente', 'producao
     return res.status(400).json({ erro: 'latas_processadas e litros_extraidos são obrigatórios.' })
 
   try {
+    // Lote com mais de um lancamento (dividido por produto): editar por lote sobrescreveria todos.
+    const { rows: qtd } = await pool.query(
+      'SELECT COUNT(*)::int AS n FROM despolpamentos WHERE lote_id=$1', [lote_id]
+    )
+    if (qtd[0] && qtd[0].n > 1)
+      return res.status(409).json({
+        erro: 'Este lote tem mais de um lançamento de despolpamento (dividido por produto). Edite cada lançamento pelo Relatório final > Detalhamento por produto.'
+      })
+
     const { rows } = await pool.query(
       `UPDATE despolpamentos
        SET latas_processadas=$1, litros_extraidos=$2,
@@ -299,6 +308,27 @@ router.put('/despolpamento/:lote_id', autenticar, autorizar('gerente', 'producao
   } catch (err) {
     console.error(err)
     res.status(500).json({ erro: 'Erro ao atualizar despolpamento.' })
+  }
+})
+
+// PUT /producao/despolpamento/item/:id — editar um lancamento especifico (lote dividido por produto)
+router.put('/despolpamento/item/:id', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
+  const { id } = req.params
+  const { solidos_totais } = req.body
+
+  if (solidos_totais === undefined)
+    return res.status(400).json({ erro: 'Informe solidos_totais.' })
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE despolpamentos SET solidos_totais=$1 WHERE id=$2 RETURNING *`,
+      [solidos_totais || null, id]
+    )
+    if (!rows[0]) return res.status(404).json({ erro: 'Lançamento de despolpamento não encontrado.' })
+    res.json(rows[0])
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao atualizar o lançamento.' })
   }
 })
 
