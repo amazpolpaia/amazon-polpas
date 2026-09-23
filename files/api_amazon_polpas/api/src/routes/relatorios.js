@@ -222,6 +222,7 @@ router.get('/periodo', autenticar, async (req, res) => {
     // Itens do despolpamento: uma linha por produto, custo rateado pelas latas
     const { rows: itens } = await pool.query(`
       SELECT DATE(l.data_operacao) AS data, l.id AS lote_id, l.codigo, f.nome AS fornecedor,
+             d.id AS despolpamento_id,
              c.regiao, c.unidade_fabril, c.tipo_frete, c.valor_frete, c.preco_por_lata,
              d.produto, d.marca, d.lote_produto, d.solidos_totais, d.operador_nome,
              d.latas_processadas, d.litros_extraidos, d.rendimento_l_lata,
