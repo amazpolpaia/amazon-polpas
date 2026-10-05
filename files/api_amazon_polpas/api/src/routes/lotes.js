@@ -75,6 +75,33 @@ router.get('/:id', autenticar, async (req, res) => {
   }
 })
 
+// GET /lotes/:id/edicao — registros crus de cada etapa, para a tela de edicao.
+// A view resumida nao traz varios campos gravados nas etapas (tara, placa da compra,
+// operador, solidos, marca, lote do produto, produto), por isso a leitura aqui e direta.
+router.get('/:id/edicao', autenticar, async (req, res) => {
+  const id = req.params.id
+  try {
+    const [lote, compra, chegada, recepcao, desp] = await Promise.all([
+      pool.query('SELECT * FROM ' + VW_LOTES + ' WHERE lote_id = $1', [id]),
+      pool.query('SELECT * FROM compras WHERE lote_id=$1', [id]),
+      pool.query('SELECT * FROM pesagens_chegada WHERE lote_id=$1', [id]),
+      pool.query('SELECT * FROM recepcoes WHERE lote_id=$1', [id]),
+      pool.query('SELECT * FROM despolpamentos WHERE lote_id=$1 ORDER BY criado_em, id', [id]),
+    ])
+    if (!lote.rows[0]) return res.status(404).json({ erro: 'Lote não encontrado.' })
+    respostaComValores(req, res, {
+      lote: lote.rows[0],
+      compra: compra.rows[0] || null,
+      chegada: chegada.rows[0] || null,
+      recepcao: recepcao.rows[0] || null,
+      despolpamentos: desp.rows,
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ erro: 'Erro ao carregar dados do lote.' })
+  }
+})
+
 // POST /lotes — cria lote (comprador ou gerente)
 router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res) => {
   const { fornecedor_id, data_operacao, observacoes } = req.body
