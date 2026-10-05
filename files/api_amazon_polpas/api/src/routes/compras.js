@@ -108,16 +108,22 @@ router.get('/resumo-dia', autenticar, async (req, res) => {
 
 // PUT /compras/:lote_id — edição de compra (gerente)
 router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
-  const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, placa, frete_no_saldo } = req.body
+  const { qtd_latas_prevista, preco_por_lata, regiao, tipo_frete, valor_frete, unidade_fabril, placa, frete_no_saldo, observacoes, data_entrega_prev } = req.body
   try {
+    // Campo nao enviado (undefined) preserva o valor atual; string vazia limpa.
+    const manter = (v) => (v === undefined ? null : String(v))
     const { rows } = await pool.query(
       `UPDATE compras SET qtd_latas_prevista=$1, preco_por_lata=$2, regiao=$3, tipo_frete=$4, valor_frete=$5, unidade_fabril=$6,
-              placa=$8, frete_no_saldo=COALESCE($9, frete_no_saldo),
+              placa            = CASE WHEN $8::text  IS NULL THEN placa            ELSE NULLIF(UPPER(TRIM($8::text)),'') END,
+              observacoes      = CASE WHEN $10::text IS NULL THEN observacoes      ELSE NULLIF(TRIM($10::text),'')       END,
+              data_entrega_prev= CASE WHEN $11::text IS NULL THEN data_entrega_prev ELSE NULLIF($11::text,'')::date      END,
+              frete_no_saldo=COALESCE($9, frete_no_saldo),
               total_ajustado = CASE WHEN qtd_latas_prevista IS DISTINCT FROM $1::int OR ROUND(preco_por_lata,2) IS DISTINCT FROM ROUND($2::numeric,2) THEN NULL ELSE total_ajustado END
        WHERE lote_id=$7 RETURNING *`,
       [qtd_latas_prevista, preco_por_lata, regiao ? String(regiao).trim() : null, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
-       placa ? String(placa).toUpperCase().trim() : null,
-       frete_no_saldo === undefined ? null : !!frete_no_saldo]
+       manter(placa),
+       frete_no_saldo === undefined ? null : !!frete_no_saldo,
+       manter(observacoes), manter(data_entrega_prev)]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Compra não encontrada.' })
     res.json(rows[0])
