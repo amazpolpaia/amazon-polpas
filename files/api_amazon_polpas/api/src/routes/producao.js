@@ -314,15 +314,55 @@ router.put('/despolpamento/:lote_id', autenticar, autorizar('gerente', 'producao
 // PUT /producao/despolpamento/item/:id — editar um lancamento especifico (lote dividido por produto)
 router.put('/despolpamento/item/:id', autenticar, autorizar('gerente', 'producao'), async (req, res) => {
   const { id } = req.params
-  const { solidos_totais } = req.body
+  const { solidos_totais, produto, latas_processadas, litros_extraidos,
+          operador_nome, marca, lote_produto, observacoes } = req.body
 
-  if (solidos_totais === undefined)
-    return res.status(400).json({ erro: 'Informe solidos_totais.' })
+  const campos = [solidos_totais, produto, latas_processadas, litros_extraidos,
+                  operador_nome, marca, lote_produto, observacoes]
+  if (campos.every((c) => c === undefined))
+    return res.status(400).json({ erro: 'Nenhum campo informado para edição.' })
+
+  // Campo nao enviado (undefined) preserva o valor atual; string vazia limpa.
+  const manter = (v) => (v === undefined ? null : String(v))
 
   try {
+    const { rows: [atual] } = await pool.query(
+      'SELECT lote_id, latas_processadas FROM despolpamentos WHERE id=$1', [id]
+    )
+    if (!atual) return res.status(404).json({ erro: 'Lançamento de despolpamento não encontrado.' })
+
+    // Alterar as latas deste lancamento nao pode estourar o que foi aferido na recepcao
+    if (latas_processadas !== undefined && latas_processadas !== null && latas_processadas !== '') {
+      const novas = Number(latas_processadas)
+      if (!(novas > 0)) return res.status(400).json({ erro: 'Latas consumidas devem ser maiores que zero.' })
+      const { rows: [saldo] } = await pool.query(
+        `SELECT COALESCE(r.qtd_latas_recebidas, 0) AS recebidas,
+                COALESCE((SELECT SUM(latas_processadas) FROM despolpamentos WHERE lote_id=$1 AND id <> $2), 0) AS outros
+         FROM lotes l LEFT JOIN recepcoes r ON r.lote_id = l.id WHERE l.id=$1`,
+        [atual.lote_id, id]
+      )
+      if (saldo && Number(saldo.recebidas) > 0) {
+        const disponivel = Number(saldo.recebidas) - Number(saldo.outros)
+        if (novas > disponivel)
+          return res.status(400).json({
+            erro: `Saldo insuficiente: restam ${disponivel} lata(s) para este lançamento (recebidas ${saldo.recebidas}, usadas nos demais ${saldo.outros}).`
+          })
+      }
+    }
+
     const { rows } = await pool.query(
-      `UPDATE despolpamentos SET solidos_totais=$1 WHERE id=$2 RETURNING *`,
-      [solidos_totais || null, id]
+      `UPDATE despolpamentos SET
+         solidos_totais    = CASE WHEN $1::text IS NULL THEN solidos_totais    ELSE NULLIF(TRIM($1::text),'') END,
+         produto           = CASE WHEN $3::text IS NULL THEN produto           ELSE NULLIF(TRIM($3::text),'') END,
+         latas_processadas = CASE WHEN $4::text IS NULL THEN latas_processadas ELSE NULLIF($4::text,'')::int  END,
+         litros_extraidos  = CASE WHEN $5::text IS NULL THEN litros_extraidos  ELSE NULLIF($5::text,'')::numeric END,
+         operador_nome     = CASE WHEN $6::text IS NULL THEN operador_nome     ELSE NULLIF(TRIM($6::text),'') END,
+         marca             = CASE WHEN $7::text IS NULL THEN marca             ELSE NULLIF(TRIM($7::text),'') END,
+         lote_produto      = CASE WHEN $8::text IS NULL THEN lote_produto      ELSE NULLIF(TRIM($8::text),'') END,
+         observacoes       = CASE WHEN $9::text IS NULL THEN observacoes       ELSE NULLIF(TRIM($9::text),'') END
+       WHERE id=$2 RETURNING *`,
+      [manter(solidos_totais), id, manter(produto), manter(latas_processadas), manter(litros_extraidos),
+       manter(operador_nome), manter(marca), manter(lote_produto), manter(observacoes)]
     )
     if (!rows[0]) return res.status(404).json({ erro: 'Lançamento de despolpamento não encontrado.' })
     res.json(rows[0])
