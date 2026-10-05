@@ -436,13 +436,12 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
     <div class="card cg">
       <div class="card-title">Selecionar lote para editar</div><div class="card-sub">Escolha a data, lote e módulo</div>
       <div class="fg"><label class="fl">Data</label><input class="fi" type="date" id="e9data" onchange="carregaLotesEdicao()"></div>
-      <div class="fg"><label class="fl">Lote</label><select class="fi" id="e9lote" onchange="carregaCamposEdicao()"></select></div>
+      <div class="fg"><label class="fl">Lote</label><select class="fi" id="e9lote" onchange="window.__ed9item=0;carregaCamposEdicao()"></select></div>
       <div class="fg"><label class="fl">Módulo para editar</label>
         <select class="fi" id="e9modulo" onchange="carregaCamposEdicao()">
           <option value="compra">Compra de fruto</option>
           <option value="chegada">Balança — chegada</option>
           <option value="recepcao">Recepção de fruto</option>
-          <option value="saida">Balança — saída</option>
           <option value="despolpa">Despolpamento</option>
         </select>
       </div>
@@ -676,7 +675,7 @@ async function regCompra(){const btn=document.getElementById('bc0'),fid=document
 // S1
 function calcCarga1(){const b=parseFloat(document.getElementById('b1bruto').value)||0,t=parseFloat(document.getElementById('b1tara').value)||0,el=document.getElementById('b1carga');if(!(b&&t&&b>t)){el.textContent='— kg';return}const carga=b-t,latas=Math.floor(carga/14);let txt=carga.toLocaleString('pt-BR')+' kg · '+latas.toLocaleString('pt-BR')+' latas';try{const lid=document.getElementById('b1lote').value;const l=lid&&typeof getLote==='function'?getLote(lid):null;if(l&&l.qtd_latas_prevista){const dif=latas-Number(l.qtd_latas_prevista);txt+=' (prev. '+l.qtd_latas_prevista+' · '+(dif>0?'+':'')+dif+')'}}catch(e){}el.textContent=txt}
 async function loadS1(){try{const _l1=await req('GET','/lotes?status=aberto');const s1=document.getElementById('b1lote');s1.innerHTML=_l1.length?_l1.map(l=>`<option value="${l.lote_id||l.id}">${rotuloLote(l)}</option>`).join(''):'<option value="">Nenhum lote disponível</option>'}catch(e){document.getElementById('b1lote').innerHTML='<option value="">Erro ao carregar</option>'};try{const _cmp=await req('GET','/pesagens/comparativo'),el=document.getElementById('lista1');const d=_cmp.filter(l=>!l.peso_bruto_kg);el.innerHTML='<div class="tl">'+d.map(l=>`<div class="tli"><div class="tld ${l.peso_bruto_kg?'tlg':'tlgr'}"></div><div class="fw7" style="margin-bottom:4px">${l.fornecedor}</div><div class="tm" style="font-size:12px">${l.peso_bruto_kg?Number(l.peso_bruto_kg).toLocaleString('pt-BR')+' kg brutos':'Aguardando'}</div><span class="badge ${l.peso_bruto_kg?'bg':'bgr'}" style="margin-top:6px">${l.peso_bruto_kg?'Pesado ✓':'Na fila'}</span></div>`).join('')+'</div>';if(!d.length)el.innerHTML='<div class="ls">Nenhum veículo pendente de pesagem.</div>'}catch(e){document.getElementById('lista1').innerHTML='<div class="ls">'+e.message+'</div>'}}
-async function regChegada(){const btn=document.getElementById('bc1'),lid=document.getElementById('b1lote').value,pb=document.getElementById('b1bruto').value;if(!lid||!pb){alert('Selecione o lote e informe o peso bruto.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/pesagens/chegada',{lote_id:lid,placa_veiculo:document.getElementById('b1placa').value,peso_bruto_kg:parseFloat(pb),tara_kg:parseFloat(document.getElementById('b1tara').value)||null});ok('ok1');loadS1()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
+async function regChegada(){const btn=document.getElementById('bc1'),lid=document.getElementById('b1lote').value,pb=document.getElementById('b1bruto').value;if(!lid||!pb){alert('Selecione o lote e informe o peso bruto.');return}btn.classList.add('loading');btn.disabled=true;try{const _h1=document.getElementById('b1hora').value;await req('POST','/pesagens/chegada',{lote_id:lid,placa_veiculo:document.getElementById('b1placa').value,peso_bruto_kg:parseFloat(pb),tara_kg:parseFloat(document.getElementById('b1tara').value)||null,hora_chegada:_h1?new Date().toISOString().slice(0,10)+'T'+_h1+':00':null});ok('ok1');loadS1()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S2
 function selLote2(){const lid=document.getElementById('r2lote').value;window._s2calc=null;const _c2=document.getElementById('r2calc'),_i2=document.getElementById('r2latas');if(_c2){_c2.style.display='none';_c2.textContent=''}if(_i2)_i2.value='';if(!lid)return;
@@ -1182,42 +1181,130 @@ async function carregaLotesEdicao(){
   const data=document.getElementById('e9data').value;if(!data)return
   try{LOTES_ED=await req('GET','/lotes?data='+data);const sel=document.getElementById('e9lote');sel.innerHTML=LOTES_ED.length?LOTES_ED.map(l=>`<option value="${l.lote_id||l.id}">${rotuloLote(l)}</option>`).join(''):'<option value="">Nenhum lote nesta data</option>';carregaCamposEdicao()}catch(e){}
 }
-function carregaCamposEdicao(){
+function carregaCamposEdicao(){ carregaCamposEdicao9() }
+function esc9(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function dtLocal9(v){if(!v)return '';const d=new Date(v);if(isNaN(d))return '';const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
+function dia9(v){if(!v)return '';return String(v).slice(0,10)}
+function num9(v){return v==null||v===''?'':String(v)}
+async function carregaCamposEdicao9(){
   const lid=document.getElementById('e9lote').value,mod=document.getElementById('e9modulo').value
   const el=document.getElementById('e9campos'),sv=document.getElementById('e9salvar')
-  if(!lid){el.innerHTML='<div class="ls">Selecione um lote</div>';sv.style.display='none';return}
-  const lote=LOTES_ED.find(l=>(l.lote_id||l.id)===lid)
-  if(!lote){return}
-  sv.style.display='block'
   document.getElementById('e9ok').style.display='none'
-  const campos={
-    compra:`<div class="fg"><label class="fl">Qtd. latas prevista</label><input class="fi" type="number" id="ed-latas" value="${lote.qtd_latas_prevista||''}"></div><div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="ed-preco" value="${lote.preco_por_lata||''}"></div><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="ed-regiao" list="regioes-lista" autocomplete="off" value="${lote.regiao||''}"></div><div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="ed-tipo-frete"><option value="terceiro" ${lote.tipo_frete==='terceiro'?'selected':''}>Terceiro</option><option value="proprio" ${lote.tipo_frete==='proprio'?'selected':''}>Carro Próprio</option><option value="fornecedor" ${lote.tipo_frete==='fornecedor'?'selected':''}>Carro Fornecedor</option><option value="outros" ${lote.tipo_frete==='outros'?'selected':''}>Outros</option></select></div><div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" id="ed-valor-frete" value="${lote.valor_frete||''}"></div></div><div class="fr"><div class="fg"><label class="fl">Unidade fabril</label><select class="fi" id="ed-unidade" onchange="toggleUnidadeOutros('ed-unidade','ed-unidade-outros')"><option value="amazon_polpas" ${lote.unidade_fabril==='amazon_polpas'?'selected':''}>Amazon Polpas</option><option value="amazon_filial" ${lote.unidade_fabril==='amazon_filial'?'selected':''}>Amazon Filial</option><option value="granfruto" ${lote.unidade_fabril==='granfruto'?'selected':''}>Granfruto</option><option value="cameta" ${lote.unidade_fabril==='cameta'?'selected':''}>Cametá</option><option value="cametaense" ${lote.unidade_fabril==='cametaense'?'selected':''}>Cametaense</option><option value="outros" ${!UNIDADES[lote.unidade_fabril]&&lote.unidade_fabril?'selected':''}>Outros</option></select></div><div class="fg" id="ed-unidade-wrap" style="display:${(!lote.unidade_fabril||UNIDADES[lote.unidade_fabril])?'none':''}"><label class="fl">Descrever unidade</label><input class="fi" type="text" id="ed-unidade-outros" value="${(!lote.unidade_fabril||UNIDADES[lote.unidade_fabril])?'':lote.unidade_fabril}"></div></div>`,
-    chegada:`<div class="fg"><label class="fl">Peso bruto (kg)</label><input class="fi" type="number" id="ed-bruto" value="${lote.peso_bruto_kg||''}"></div><div class="fg"><label class="fl">Placa do veículo</label><input class="fi" type="text" id="ed-placa" value="${lote.placa_veiculo||''}"></div>`,
-    recepcao:`<div class="fg"><label class="fl">Latas recebidas</label><input class="fi" type="number" id="ed-recebidas" value="${lote.qtd_latas_recebidas||''}"></div><div class="fg"><label class="fl">Condição do fruto</label><select class="fi" id="ed-condicao"><option value="otima" ${lote.condicao_fruto==='otima'?'selected':''}>Ótima</option><option value="boa" ${lote.condicao_fruto==='boa'?'selected':''}>Boa</option><option value="regular" ${lote.condicao_fruto==='regular'?'selected':''}>Regular</option><option value="ruim" ${lote.condicao_fruto==='ruim'?'selected':''}>Ruim</option></select></div>`,
-    saida:`<div class="fg"><label class="fl">Peso de saída (kg)</label><input class="fi" type="number" id="ed-saida" value="${lote.peso_saida_kg||''}"></div>`,
-    despolpa:`<div class="fg"><label class="fl">Latas processadas</label><input class="fi" type="number" id="ed-dlatas" value="${lote.qtd_latas_recebidas||''}"></div><div class="fg"><label class="fl">Litros extraídos</label><input class="fi" type="number" id="ed-litros" value="${lote.litros_extraidos||''}"></div><div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="ed-op" value="${lote.operador_nome||''}"></div><div class="fr"><div class="fg"><label class="fl">Sólidos Totais</label><input class="fi" type="text" id="ed-solidos" value="${lote.solidos_totais||''}"></div><div class="fg"><label class="fl">Marca</label><input class="fi" type="text" id="ed-marca" value="${lote.marca||''}"></div></div><div class="fg"><label class="fl">Lote do produto (polpa)</label><input class="fi" type="text" id="ed-lote-produto" value="${lote.lote_produto||''}"></div>`
+  if(!lid){el.innerHTML='<div class="ls">Selecione um lote</div>';sv.style.display='none';return}
+  el.innerHTML='<div class="ls">Carregando dados do lote…</div>';sv.style.display='none'
+  let d
+  try{d=await req('GET','/lotes/'+lid+'/edicao')}
+  catch(e){el.innerHTML='<div class="ls">Erro ao carregar: '+esc9(e.message||e)+'</div>';return}
+  if(document.getElementById('e9lote').value!==lid||document.getElementById('e9modulo').value!==mod)return
+  window.__ed9=d;window.__ed9lote=lid
+  renderCamposEdicao9()
+}
+function renderCamposEdicao9(){
+  const d=window.__ed9;if(!d)return
+  const mod=document.getElementById('e9modulo').value
+  const el=document.getElementById('e9campos'),sv=document.getElementById('e9salvar')
+  const c=d.compra||{},ch=d.chegada||{},r=d.recepcao||{},ds=d.despolpamentos||[]
+  const falta=t=>{el.innerHTML='<div class="ls">Este lote ainda não tem '+t+'. Lance primeiro pela etapa correspondente.</div>';sv.style.display='none'}
+  if(mod==='compra'&&!d.compra)return falta('compra registrada')
+  if(mod==='chegada'&&!d.chegada)return falta('pesagem de chegada')
+  if(mod==='recepcao'&&!d.recepcao)return falta('recepção registrada')
+  if(mod==='despolpa'&&!ds.length)return falta('despolpamento lançado')
+  sv.style.display='block'
+  let h=''
+  if(mod==='compra'){
+    const un=c.unidade_fabril,outros=!!un&&(un==='outros'||!UNIDADES[un])
+    h=`<div class="fr"><div class="fg"><label class="fl">Qtd. latas prevista</label><input class="fi" type="number" id="ed-latas" value="${num9(c.qtd_latas_prevista)}"></div>
+    <div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" step="0.01" id="ed-preco" value="${num9(c.preco_por_lata)}"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="ed-regiao" list="regioes-lista" autocomplete="off" value="${esc9(c.regiao)}"></div>
+    <div class="fg"><label class="fl">Placa combinada</label><input class="fi" type="text" id="ed-placa-compra" value="${esc9(c.placa)}"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="ed-tipo-frete">${['terceiro|Terceiro','proprio|Carro Próprio','fornecedor|Carro Fornecedor','outros|Outros'].map(o=>{const[v,t]=o.split('|');return `<option value="${v}" ${c.tipo_frete===v?'selected':''}>${t}</option>`}).join('')}</select></div>
+    <div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" step="0.01" id="ed-valor-frete" value="${num9(c.valor_frete)}"></div></div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="ed-frete-saldo" ${c.frete_no_saldo?'checked':''}> Cobrar o frete no saldo do fornecedor</label></div>
+    <div class="fr"><div class="fg"><label class="fl">Unidade fabril</label><select class="fi" id="ed-unidade" onchange="toggleUnidadeOutros('ed-unidade','ed-unidade-outros')">${['amazon_polpas|Amazon Polpas','amazon_filial|Amazon Filial','granfruto|Granfruto','cameta|Cametá','cametaense|Cametaense'].map(o=>{const[v,t]=o.split('|');return `<option value="${v}" ${un===v?'selected':''}>${t}</option>`}).join('')}<option value="outros" ${outros?'selected':''}>Outros</option></select></div>
+    <div class="fg" id="ed-unidade-wrap" style="display:${outros?'':'none'}"><label class="fl">Descrever unidade</label><input class="fi" type="text" id="ed-unidade-outros" value="${outros?esc9(un):''}"></div></div>
+    <div class="fg"><label class="fl">Data de entrega prevista</label><input class="fi" type="date" id="ed-entrega" value="${dia9(c.data_entrega_prev)}"></div>
+    <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="ed-obs-compra" value="${esc9(c.observacoes)}"></div>`
   }
-  el.innerHTML=campos[mod]||'<div class="ls">Selecione um módulo</div>'
+  if(mod==='chegada'){
+    h=`<div class="fr"><div class="fg"><label class="fl">Placa do veículo</label><input class="fi" type="text" id="ed-placa" value="${esc9(ch.placa_veiculo)}"></div>
+    <div class="fg"><label class="fl">Horário de chegada</label><input class="fi" type="datetime-local" id="ed-hora" value="${dtLocal9(ch.hora_chegada)}"></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Peso bruto (kg)</label><input class="fi" type="number" step="0.1" id="ed-bruto" value="${num9(ch.peso_bruto_kg)}" oninput="calcCarga9()"></div>
+    <div class="fg"><label class="fl">Tara (kg)</label><input class="fi" type="number" step="0.1" id="ed-tara" value="${num9(ch.tara_kg)}" oninput="calcCarga9()"></div></div>
+    <div class="ib" id="ed-carga" style="margin-bottom:12px"></div>
+    <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="ed-obs-chegada" value="${esc9(ch.observacoes)}"></div>`
+  }
+  if(mod==='recepcao'){
+    h=`<div class="fr"><div class="fg"><label class="fl">Latas previstas na compra</label><input class="fi" type="number" value="${num9(c.qtd_latas_prevista)}" disabled></div>
+    <div class="fg"><label class="fl">Latas recebidas (14 kg)</label><input class="fi" type="number" id="ed-recebidas" value="${num9(r.qtd_latas_recebidas)}"></div></div>
+    ${ch.latas_calculadas!=null?`<div class="ib" style="margin-bottom:12px">Calculado na balança: ${ch.latas_calculadas} latas</div>`:''}
+    <div class="fg"><label class="fl">Condição do fruto</label><select class="fi" id="ed-condicao">${['otima|Ótima','boa|Boa','regular|Regular','ruim|Ruim'].map(o=>{const[v,t]=o.split('|');return `<option value="${v}" ${r.condicao_fruto===v?'selected':''}>${t}</option>`}).join('')}</select></div>
+    <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="ed-obs-recepcao" value="${esc9(r.observacoes)}"></div>`
+  }
+  if(mod==='despolpa'){
+    let i=window.__ed9item;if(i==null||i>=ds.length)i=0;window.__ed9item=i
+    const it=ds[i]
+    const usadas=ds.reduce((s,x)=>s+Number(x.latas_processadas||0),0)
+    const sel=ds.length>1?`<div class="fg"><label class="fl">Lançamento (${ds.length} produtos neste lote)</label><select class="fi" id="ed-item" onchange="trocaItem9(this.value)">${ds.map((x,k)=>`<option value="${k}" ${k===i?'selected':''}>${esc9(x.produto||x.marca||'Produto '+(k+1))} · ${Number(x.latas_processadas||0)} latas</option>`).join('')}</select></div>`:''
+    h=`${sel}<div class="ib" style="margin-bottom:12px">Recebidas na recepção: ${num9(r.qtd_latas_recebidas)||'—'} · lançadas: ${usadas}</div>
+    <div class="fg"><label class="fl">Produto</label><input class="fi" type="text" id="ed-produto" list="produtos-lista" autocomplete="off" value="${esc9(it.produto)}"></div>
+    <div class="fr"><div class="fg"><label class="fl">Latas consumidas</label><input class="fi" type="number" id="ed-dlatas" value="${num9(it.latas_processadas)}"></div>
+    <div class="fg"><label class="fl">Quilos produzidos</label><input class="fi" type="number" step="0.01" id="ed-litros" value="${num9(it.litros_extraidos)}"></div></div>
+    <div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="ed-op" value="${esc9(it.operador_nome)}"></div>
+    <div class="fr"><div class="fg"><label class="fl">Sólidos Totais</label><input class="fi" type="text" id="ed-solidos" value="${esc9(it.solidos_totais)}"></div>
+    <div class="fg"><label class="fl">Marca</label><input class="fi" type="text" id="ed-marca" value="${esc9(it.marca)}"></div></div>
+    <div class="fg"><label class="fl">Lote do produto (polpa)</label><input class="fi" type="text" id="ed-lote-produto" value="${esc9(it.lote_produto)}"></div>
+    <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="ed-obs-desp" value="${esc9(it.observacoes)}"></div>`
+  }
+  el.innerHTML=h
+  if(mod==='chegada')calcCarga9()
+}
+function trocaItem9(k){window.__ed9item=Number(k);renderCamposEdicao9()}
+function calcCarga9(){
+  const el=document.getElementById('ed-carga');if(!el)return
+  const b=parseFloat((document.getElementById('ed-bruto')||{}).value)||0,t=parseFloat((document.getElementById('ed-tara')||{}).value)||0
+  if(!(b&&t&&b>t)){el.textContent='Informe peso bruto e tara para calcular a carga.';return}
+  const carga=b-t;el.textContent='Carga: '+carga.toLocaleString('pt-BR')+' kg · '+Math.floor(carga/14).toLocaleString('pt-BR')+' latas (carga ÷ 14)'
 }
 async function salvarEdicao(){
   const btn=document.querySelector('#e9salvar .btn')
   const lid=document.getElementById('e9lote').value,mod=document.getElementById('e9modulo').value
+  const d=window.__ed9;if(!d)return
+  function gv(id){var el=document.getElementById(id);return el?el.value:undefined}
+  let rota,corpo,metodo='PUT'
+  if(mod==='compra'){
+    rota='/compras/'+lid
+    corpo={qtd_latas_prevista:parseInt(gv('ed-latas')),preco_por_lata:parseFloat(gv('ed-preco')),regiao:gv('ed-regiao'),
+      tipo_frete:gv('ed-tipo-frete'),valor_frete:parseFloat(gv('ed-valor-frete'))||0,
+      unidade_fabril:getUnidadeFabril('ed-unidade','ed-unidade-outros'),placa:gv('ed-placa-compra'),
+      frete_no_saldo:!!(document.getElementById('ed-frete-saldo')||{}).checked,
+      data_entrega_prev:gv('ed-entrega'),observacoes:gv('ed-obs-compra')}
+    if(!(corpo.qtd_latas_prevista>0)||!(corpo.preco_por_lata>0)){alert('Informe quantidade e preço.');return}
+  }
+  if(mod==='chegada'){
+    rota='/pesagens/chegada/'+lid
+    corpo={peso_bruto_kg:parseFloat(gv('ed-bruto')),placa_veiculo:gv('ed-placa'),tara_kg:gv('ed-tara'),
+      hora_chegada:gv('ed-hora'),observacoes:gv('ed-obs-chegada')}
+    if(!(corpo.peso_bruto_kg>0)){alert('Informe o peso bruto.');return}
+  }
+  if(mod==='recepcao'){
+    rota='/recepcoes/'+lid
+    corpo={qtd_latas_recebidas:parseInt(gv('ed-recebidas')),condicao_fruto:gv('ed-condicao'),observacoes:gv('ed-obs-recepcao')}
+    if(!(corpo.qtd_latas_recebidas>0)){alert('Informe as latas recebidas.');return}
+  }
+  if(mod==='despolpa'){
+    const it=(d.despolpamentos||[])[window.__ed9item||0];if(!it){alert('Selecione o lançamento.');return}
+    rota='/producao/despolpamento/item/'+it.id
+    corpo={produto:gv('ed-produto'),latas_processadas:gv('ed-dlatas'),litros_extraidos:gv('ed-litros'),
+      operador_nome:gv('ed-op'),solidos_totais:gv('ed-solidos'),marca:gv('ed-marca'),
+      lote_produto:gv('ed-lote-produto'),observacoes:gv('ed-obs-desp')}
+    if(!(parseFloat(corpo.litros_extraidos)>0)){alert('Informe os quilos produzidos.');return}
+  }
   btn.classList.add('loading');btn.disabled=true
   try{
-    const rotas={compra:'/compras/',chegada:'/pesagens/chegada/',recepcao:'/recepcoes/',saida:'/pesagens/saida/',despolpa:'/producao/despolpamento/'}
-    function gv(id){var el=document.getElementById(id);return el?el.value:null}
-    const corposMap={
-      compra:function(){return{qtd_latas_prevista:parseInt(gv('ed-latas')),preco_por_lata:parseFloat(gv('ed-preco')),regiao:gv('ed-regiao'),tipo_frete:gv('ed-tipo-frete'),valor_frete:parseFloat(gv('ed-valor-frete'))||0,unidade_fabril:getUnidadeFabril('ed-unidade','ed-unidade-outros')}},
-      chegada:function(){return{peso_bruto_kg:parseFloat(gv('ed-bruto')),placa_veiculo:gv('ed-placa')}},
-      recepcao:function(){return{qtd_latas_recebidas:parseInt(gv('ed-recebidas')),condicao_fruto:gv('ed-condicao')}},
-      saida:function(){return{peso_saida_kg:parseFloat(gv('ed-saida'))}},
-      despolpa:function(){return{latas_processadas:parseInt(gv('ed-dlatas')),litros_extraidos:parseFloat(gv('ed-litros')),operador_nome:gv('ed-op'),solidos_totais:gv('ed-solidos')||null,marca:gv('ed-marca')||null,lote_produto:gv('ed-lote-produto')||null}}
-    };
-    const corpos={compra:corposMap.compra,chegada:corposMap.chegada,recepcao:corposMap.recepcao,saida:corposMap.saida,despolpa:corposMap.despolpa}
-    await req('PUT',rotas[mod]+lid,typeof corpos[mod]=='function'?corpos[mod]():corpos[mod])
+    await req(metodo,rota,corpo)
     const ok=document.getElementById('e9ok');ok.style.display='block';setTimeout(()=>ok.style.display='none',4000)
-    await carregaLotes();carregaCamposEdicao()
-  }catch(e){alert('Erro: '+e.message)}
+    await carregaLotes();await carregaCamposEdicao9()
+  }catch(e){alert('Erro: '+(e.message||e))}
   finally{btn.classList.remove('loading');btn.disabled=false}
 }
 
