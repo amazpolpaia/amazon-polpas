@@ -167,17 +167,31 @@ router.get('/comparativo', autenticar, async (req, res) => {
 
 // PUT /pesagens/chegada/:lote_id — edição (gerente)
 router.put('/chegada/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
-  const { peso_bruto_kg, placa_veiculo } = req.body
+  const { peso_bruto_kg, placa_veiculo, tara_kg, hora_chegada, observacoes } = req.body
+  // Campo nao enviado (undefined) preserva o valor atual; string vazia limpa.
+  const manter = (v) => (v === undefined ? null : String(v))
   try {
     const { rows } = await pool.query(
       `UPDATE pesagens_chegada
           SET peso_bruto_kg=$1, placa_veiculo=$2,
-              latas_calculadas = CASE WHEN tara_kg > 0 AND $1::numeric > tara_kg
-                                      THEN FLOOR(($1::numeric - tara_kg) / 14)::int
-                                      ELSE NULL END
+              tara_kg      = CASE WHEN $4::text IS NULL THEN tara_kg      ELSE NULLIF($4::text,'')::numeric   END,
+              hora_chegada = CASE WHEN $5::text IS NULL THEN hora_chegada ELSE NULLIF($5::text,'')::timestamp END,
+              observacoes  = CASE WHEN $6::text IS NULL THEN observacoes  ELSE NULLIF(TRIM($6::text),'')      END
         WHERE lote_id=$3 RETURNING *`,
-      [peso_bruto_kg, placa_veiculo, req.params.lote_id]
+      [peso_bruto_kg, placa_veiculo, req.params.lote_id, manter(tara_kg), manter(hora_chegada), manter(observacoes)]
     )
+    // Latas calculadas: (bruto - tara) / 14, ja considerando a tara recem-gravada
+    if (rows[0]) {
+      const { rows: calc } = await pool.query(
+        `UPDATE pesagens_chegada
+            SET latas_calculadas = CASE WHEN tara_kg > 0 AND peso_bruto_kg > tara_kg
+                                        THEN FLOOR((peso_bruto_kg - tara_kg) / 14)::int
+                                        ELSE NULL END
+          WHERE lote_id=$1 RETURNING *`,
+        [req.params.lote_id]
+      )
+      if (calc[0]) rows[0] = calc[0]
+    }
     if (!rows[0]) return res.status(404).json({ erro: 'Pesagem de chegada não encontrada.' })
     res.json(rows[0])
   } catch (err) {
