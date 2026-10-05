@@ -72,3 +72,4 @@ app.listen(PORT, () => {
   console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`)
   console.log(`Tela + API: http://localhost:${PORT}\n`)
 })
+// redeploy 2026-10-05
