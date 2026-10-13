@@ -125,6 +125,39 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
   }
 })
 
+// PUT /lotes/:id/data — corrige a data de operacao (o dia que manda nos relatorios).
+// O codigo do lote embute a data, entao pode ser regerado junto (opcional).
+router.put('/:id/data', autenticar, autorizar('gerente'), async (req, res) => {
+  const { data_operacao, atualizar_codigo } = req.body
+  if (!data_operacao) return res.status(400).json({ erro: 'Informe a data de operação.' })
+
+  const nova = String(data_operacao).slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nova))
+    return res.status(400).json({ erro: 'Data inválida.' })
+
+  try {
+    const { rows: [lote] } = await pool.query(
+      'SELECT id, fornecedor_id, codigo FROM lotes WHERE id=$1', [req.params.id]
+    )
+    if (!lote) return res.status(404).json({ erro: 'Lote não encontrado.' })
+
+    const codigo = atualizar_codigo
+      ? await gerarCodigo(lote.fornecedor_id, nova)
+      : lote.codigo
+
+    const { rows } = await pool.query(
+      'UPDATE lotes SET data_operacao=$1, codigo=$2, atualizado_em=NOW() WHERE id=$3 RETURNING *',
+      [nova, codigo, req.params.id]
+    )
+    res.json({ ...rows[0], codigo_anterior: lote.codigo })
+  } catch (err) {
+    console.error(err)
+    if (err.code === '23505')
+      return res.status(409).json({ erro: 'Já existe um lote com este código. Tente novamente.' })
+    res.status(500).json({ erro: 'Erro ao atualizar a data do lote.' })
+  }
+})
+
 // PATCH /lotes/:id/status
 router.patch('/:id/status', autenticar, autorizar('gerente'), async (req, res) => {
   const { status } = req.body
