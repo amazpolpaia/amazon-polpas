@@ -1225,7 +1225,10 @@ function renderCamposEdicao9(){
     <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="ed-frete-saldo" ${c.frete_no_saldo?'checked':''}> Cobrar o frete no saldo do fornecedor</label></div>
     <div class="fr"><div class="fg"><label class="fl">Unidade fabril</label><select class="fi" id="ed-unidade" onchange="toggleUnidadeOutros('ed-unidade','ed-unidade-outros')">${['amazon_polpas|Amazon Polpas','amazon_filial|Amazon Filial','granfruto|Granfruto','cameta|Cametá','cametaense|Cametaense'].map(o=>{const[v,t]=o.split('|');return `<option value="${v}" ${un===v?'selected':''}>${t}</option>`}).join('')}<option value="outros" ${outros?'selected':''}>Outros</option></select></div>
     <div class="fg" id="ed-unidade-wrap" style="display:${outros?'':'none'}"><label class="fl">Descrever unidade</label><input class="fi" type="text" id="ed-unidade-outros" value="${outros?esc9(un):''}"></div></div>
-    <div class="fg"><label class="fl">Data de entrega prevista</label><input class="fi" type="date" id="ed-entrega" value="${dia9(c.data_entrega_prev)}"></div>
+    <div class="fr"><div class="fg"><label class="fl">Data da operação</label><input class="fi" type="date" id="ed-data-op" value="${dia9(d.lote&&d.lote.data_operacao)}"></div>
+    <div class="fg"><label class="fl">Data de entrega prevista</label><input class="fi" type="date" id="ed-entrega" value="${dia9(c.data_entrega_prev)}"></div></div>
+    <div class="ib" style="margin-bottom:10px">A <b>data da operação</b> é a que manda nos relatórios e no código do lote. A data de entrega prevista é só a combinada na compra.</div>
+    <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="ed-atualizar-codigo" checked> Se a data mudar, renomear o lote <b>${esc9(d.lote&&d.lote.codigo)}</b> para a nova data</label></div>
     <div class="fg"><label class="fl">Observações</label><input class="fi" type="text" id="ed-obs-compra" value="${esc9(c.observacoes)}"></div>`
   }
   if(mod==='chegada'){
@@ -1274,6 +1277,7 @@ async function salvarEdicao(){
   const d=window.__ed9;if(!d)return
   function gv(id){var el=document.getElementById(id);return el?el.value:undefined}
   let rota,corpo,metodo='PUT'
+  let _dtNova=null,_dtAtual=null
   if(mod==='compra'){
     rota='/compras/'+lid
     corpo={qtd_latas_prevista:parseInt(gv('ed-latas')),preco_por_lata:parseFloat(gv('ed-preco')),regiao:gv('ed-regiao'),
@@ -1282,6 +1286,8 @@ async function salvarEdicao(){
       frete_no_saldo:!!(document.getElementById('ed-frete-saldo')||{}).checked,
       data_entrega_prev:gv('ed-entrega'),observacoes:gv('ed-obs-compra')}
     if(!(corpo.qtd_latas_prevista>0)||!(corpo.preco_por_lata>0)){alert('Informe quantidade e preço.');return}
+    _dtNova=gv('ed-data-op')||null;_dtAtual=dia9(d.lote&&d.lote.data_operacao)||null
+    if(_dtNova&&!_dtAtual){alert('Não foi possível ler a data atual do lote. Recarregue a tela.');return}
   }
   if(mod==='chegada'){
     rota='/pesagens/chegada/'+lid
@@ -1305,8 +1311,17 @@ async function salvarEdicao(){
   btn.classList.add('loading');btn.disabled=true
   try{
     await req(metodo,rota,corpo)
+    const _mudouData=!!(_dtNova&&_dtAtual&&_dtNova!==_dtAtual)
+    if(_mudouData)await req('PUT','/lotes/'+lid+'/data',{data_operacao:_dtNova,atualizar_codigo:!!(document.getElementById('ed-atualizar-codigo')||{}).checked})
     const ok=document.getElementById('e9ok');ok.style.display='block';setTimeout(()=>ok.style.display='none',4000)
-    await carregaLotes();await carregaCamposEdicao9()
+    await carregaLotes()
+    if(_mudouData){
+      // O lote mudou de dia: a lista da tela segue a data, entao acompanha e volta no mesmo lote
+      const _e9d=document.getElementById('e9data');if(_e9d)_e9d.value=_dtNova
+      await carregaLotesEdicao()
+      const _sel=document.getElementById('e9lote')
+      if(_sel&&[..._sel.options].some(o=>o.value===lid)){_sel.value=lid;await carregaCamposEdicao9()}
+    }else{await carregaCamposEdicao9()}
   }catch(e){alert('Erro: '+(e.message||e))}
   finally{btn.classList.remove('loading');btn.disabled=false}
 }
