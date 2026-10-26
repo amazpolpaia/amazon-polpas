@@ -957,13 +957,15 @@ function renderRelatorio6(){
         {t:'Custo/L',tp:'n',f:l=>Number(l.custo_por_litro||0)},
         {t:'Total',tp:'n',f:l=>Number(l.total_estimado||0)}
       ];
-      window.__detF=COLS.map(()=>'');
+      const vazio=()=>COLS.map(c=>c.tp==='t'?[]:'');
+      window.__detF=vazio();
       window.__detFoco=null;
+      window.__detPopCol=null;
+      window.__detPopOpts=[];
       const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      const passaNum=(val,expr)=>{
-        const e=String(expr).replace(/\s/g,'').replace(',','.');
+      const umNum=(val,e0)=>{
+        const e=String(e0).replace(/\s/g,'').replace(',','.');
         if(!e)return true;
-        if(val==null||isNaN(val))return false;
         let m=e.match(/^(>=|<=|>|<|=)?(-?[0-9]+(?:\.[0-9]+)?)$/);
         if(m){const n=Number(m[2]);const op=m[1]||'=';
           if(op==='>')return val>n;
@@ -975,14 +977,24 @@ function renderRelatorio6(){
         if(m)return val>=Number(m[1])&&val<=Number(m[2]);
         return true;
       };
+      const passaNum=(val,expr)=>{
+        const ps=String(expr).split(/[;|]/).map(x=>x.trim()).filter(Boolean);
+        if(!ps.length)return true;
+        if(val==null||isNaN(val))return false;
+        return ps.some(p=>umNum(val,p));
+      };
       const passa=(l,ate)=>COLS.every((c,i)=>{
         if(i===ate)return true;
         const fv=window.__detF[i];
+        if(c.tp==='t')return !fv||!fv.length||fv.indexOf(String(c.f(l)))>=0;
         if(!fv)return true;
-        return c.tp==='n'?passaNum(c.f(l),fv):String(c.f(l))===fv;
+        return passaNum(c.f(l),fv);
       });
+      const ativo=i=>{const f=window.__detF[i];return COLS[i].tp==='t'?!!(f&&f.length):!!f};
       const opcoes=i=>[...new Set(itensDesp.filter(l=>passa(l,i)).map(l=>String(COLS[i].f(l))))].sort((a,b)=>a.localeCompare(b,'pt-BR',{numeric:true}));
-      const cab=()=>`<tr style="background:var(--bg3)">${COLS.map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c.t}</th>`).join('')}</tr><tr class="det-filtros no-print" style="background:var(--bg2)">${COLS.map((c,i)=>`<th style="padding:4px 6px;text-align:left">${c.tp==='t'?`<select data-detcol="${i}" onchange="detFiltro(${i},this.value)" style="width:100%;min-width:90px;max-width:150px;font-size:10px;padding:3px 4px;border:1px solid ${window.__detF[i]?'var(--purple)':'var(--border)'};border-radius:5px;background:#fff;color:var(--text);cursor:pointer"><option value="">Todos</option>${opcoes(i).map(v=>`<option value="${esc(v)}"${window.__detF[i]===v?' selected':''}>${esc(v)}</option>`).join('')}</select>`:`<input data-detcol="${i}" value="${esc(window.__detF[i])}" onchange="detFiltro(${i},this.value)" placeholder="&gt;5" title="Use &gt;5, &lt;5, &gt;=5, 5-7 ou 6 para valor exato" style="width:100%;min-width:58px;max-width:90px;font-size:10px;padding:3px 4px;border:1px solid ${window.__detF[i]?'var(--purple)':'var(--border)'};border-radius:5px;background:#fff;color:var(--text)">`}</th>`).join('')}</tr>`;
+      const rotuloBtn=i=>{const f=window.__detF[i]||[];return !f.length?'Todos':(f.length===1?f[0]:f.length+' selecionados')};
+      const btnCss=i=>'width:100%;min-width:92px;max-width:150px;display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:10px;padding:4px 6px;border:1px solid '+(ativo(i)?'var(--purple)':'var(--border)')+';border-radius:5px;background:'+(ativo(i)?'#f3eefa':'#fff')+';color:'+(ativo(i)?'var(--purple)':'var(--text)')+';font-weight:'+(ativo(i)?'700':'500')+';cursor:pointer;text-align:left;overflow:hidden';
+      const cab=()=>`<tr style="background:var(--bg3)">${COLS.map(c=>`<th style="padding:7px 10px;text-align:left;font-size:10px;color:var(--text2);font-weight:600;text-transform:uppercase;white-space:nowrap">${c.t}</th>`).join('')}</tr><tr class="det-filtros no-print" style="background:var(--bg2)">${COLS.map((c,i)=>`<th style="padding:4px 6px;text-align:left">${c.tp==='t'?`<button type="button" data-detcol="${i}" onclick="detAbrir(${i},this)" title="Marcar uma ou várias opções" style="${btnCss(i)}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rotuloBtn(i))}</span><span style="opacity:.7">▾</span></button>`:`<input data-detcol="${i}" value="${esc(window.__detF[i])}" onchange="detFiltro(${i},this.value)" placeholder="&gt;5" title="Use &gt;5, &lt;5, &gt;=5, 5-7, valor exato, ou vários separados por ; (ex: 5-6;&gt;8)" style="width:100%;min-width:58px;max-width:90px;font-size:10px;padding:4px 6px;border:1px solid ${ativo(i)?'var(--purple)':'var(--border)'};border-radius:5px;background:${ativo(i)?'#f3eefa':'#fff'};color:var(--text)">`}</th>`).join('')}</tr>`;
       const linha=l=>`<tr style="border-top:1px solid var(--border)"><td style="padding:7px 10px;white-space:nowrap">${fmtDate(l.data)}</td><td style="padding:7px 10px;font-weight:600">${l.fornecedor}</td><td style="padding:7px 10px;font-weight:600">${l.produto||l.marca||'—'}</td><td style="padding:7px 10px;color:var(--text2)">${l.regiao||'—'}</td><td style="padding:7px 10px;color:var(--text2)">${fmtUnidade(l.unidade_fabril)}</td><td style="padding:7px 10px;color:var(--text2)">${freteItem(l)}</td><td style="padding:7px 10px">${fmtBRL(l.latas_processadas,0)}</td><td style="padding:7px 10px;font-weight:600">R$ ${Number(l.preco_por_lata||0).toFixed(2)}</td><td style="padding:7px 10px">${fmtBRL(l.litros_extraidos,1)} L</td><td style="padding:7px 10px;font-weight:700;color:${Number(l.rendimento_l_lata)>=8?'var(--green)':'var(--yellow)'}">${Number(l.rendimento_l_lata||0).toFixed(2)}</td><td style="padding:7px 10px">${ehMaster()&&l.despolpamento_id?`<span onclick="editarSolidosItem('${l.despolpamento_id}')" title="Corrigir sólidos deste lançamento" style="cursor:pointer;border-bottom:1px dashed var(--purple);color:var(--purple);font-weight:600">${l.solidos_totais||'—'} ✎</span>`:(l.solidos_totais||'—')}</td><td style="padding:7px 10px">${l.marca||'—'}</td><td style="padding:7px 10px;font-size:11px">${l.lote_produto||'—'}</td><td style="padding:7px 10px;font-weight:700;color:${Number(l.custo_por_litro)<=4?'var(--green)':'var(--yellow)'}">R$ ${Number(l.custo_por_litro||0).toFixed(4)}</td><td style="padding:7px 10px;white-space:nowrap">${ehMaster()?`<span onclick="editarTotalLote('${l.lote_id}',${Number(l.total_estimado||0)})" title="Ajustar para o total da NF" style="cursor:pointer;border-bottom:1px dashed var(--purple);color:var(--purple);font-weight:600">R$ ${fmtBRL(l.total_estimado)} ✎</span>`:`R$ ${fmtBRL(l.total_estimado)}`}${l.total_ajustado!=null?` <span title="Ajustado manualmente (NF)" style="color:var(--purple);font-weight:800">•</span>`:''}</td></tr>${l.observacoes?`<tr><td colspan="15" style="padding:0 10px 8px 24px;color:var(--text2);font-size:11px;font-style:italic;white-space:normal!important;word-break:break-word">💬 ${String(l.observacoes).replace(/</g,'&lt;')}</td></tr>`:''}`;
       const rodape=ls=>{
         const sl=ls.reduce((s,l)=>s+Number(l.latas_processadas||0),0);
@@ -992,20 +1004,112 @@ function renderRelatorio6(){
         const rd=sl>0?sk/sl:0;
         return `<tr style="border-top:2px solid var(--purple);background:var(--bg3)"><td colspan="6" style="padding:8px 10px;font-weight:800;font-size:11px">Subtotal do filtro · ${ls.length} lançamento(s) · ${new Set(ls.map(l=>l.lote_id)).size} lote(s)</td><td style="padding:8px 10px;font-weight:800">${fmtBRL(sl,0)}</td><td></td><td style="padding:8px 10px;font-weight:800;white-space:nowrap">${fmtBRL(sk,1)} L</td><td style="padding:8px 10px;font-weight:800">${fmtBRL(rd,2)}</td><td colspan="3"></td><td style="padding:8px 10px;font-weight:800;white-space:nowrap">R$ ${fmtBRL(cl,4)}</td><td style="padding:8px 10px;font-weight:800;white-space:nowrap">R$ ${fmtBRL(st)}</td></tr>`;
       };
+      const chips=()=>{
+        const cs=[];
+        COLS.forEach((c,i)=>{
+          if(!ativo(i))return;
+          const f=window.__detF[i];
+          const txt=c.tp==='t'?(f.length<=2?f.join(', '):f.length+' opções'):f;
+          cs.push(`<span style="display:inline-flex;align-items:center;gap:5px;background:#f3eefa;border:1px solid var(--purple);color:var(--purple);border-radius:20px;padding:3px 9px;font-size:10px;font-weight:600">${esc(c.t)}: ${esc(txt)}<span onclick="detLimparCol(${i})" title="Remover este filtro" style="cursor:pointer;font-weight:800">✕</span></span>`);
+        });
+        return cs.join('');
+      };
+      const detFora=ev=>{const p=document.getElementById('det-pop');if(!p)return;if(p.contains(ev.target))return;if(ev.target.closest&&ev.target.closest('[data-detcol]'))return;window.detFechar()};
+      const detEsc=ev=>{if(ev.key==='Escape')window.detFechar()};
+      window.detFechar=function(){
+        const p=document.getElementById('det-pop');
+        if(p)p.remove();
+        document.removeEventListener('mousedown',detFora,true);
+        document.removeEventListener('keydown',detEsc,true);
+        window.__detPopCol=null;
+      };
+      window.detAbrir=function(i,btn){
+        const jaAberto=window.__detPopCol===i;
+        window.detFechar();
+        if(jaAberto)return;
+        const opts=opcoes(i);
+        window.__detPopOpts=opts;
+        window.__detPopCol=i;
+        const sel=window.__detF[i]||[];
+        const w=Math.min(290,window.innerWidth-24);
+        const bt='font-size:10px;padding:4px 9px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--purple);font-weight:600;cursor:pointer';
+        const p=document.createElement('div');
+        p.id='det-pop';
+        p.className='no-print';
+        p.style.cssText='position:fixed;z-index:99999;width:'+w+'px;max-height:min(360px,70vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:9px';
+        p.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;margin-bottom:6px">'+esc(COLS[i].t)+'</div>'
+          +'<input id="det-pop-busca" oninput="detBusca(this.value)" placeholder="Buscar..." style="font-size:11px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
+          +'<div style="display:flex;gap:6px;margin-bottom:6px"><button type="button" onclick="detTodos(1)" style="'+bt+'">Marcar todos</button><button type="button" onclick="detTodos(0)" style="'+bt+'">Limpar</button></div>'
+          +'<div id="det-pop-list" style="overflow-y:auto;flex:1;border-top:1px solid var(--border);padding-top:5px">'
+          +opts.map((v,vi)=>'<label data-v="'+esc(v)+'" style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:11px;cursor:pointer;border-radius:5px"><input type="checkbox" onchange="detTog('+vi+',this.checked)"'+(sel.indexOf(v)>=0?' checked':'')+' style="cursor:pointer;width:14px;height:14px;flex:none"><span style="overflow-wrap:anywhere">'+esc(v)+'</span></label>').join('')
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;padding-top:6px;border-top:1px solid var(--border)"><span style="font-size:10px;color:var(--text2)">'+opts.length+' opção(ões)</span><button type="button" onclick="detFechar()" style="'+bt+'">Fechar</button></div>';
+        document.body.appendChild(p);
+        const r=btn.getBoundingClientRect();
+        let left=r.left;
+        if(left+w>window.innerWidth-8)left=window.innerWidth-w-8;
+        if(left<8)left=8;
+        let top=r.bottom+4;
+        if(top+p.offsetHeight>window.innerHeight-8)top=Math.max(8,r.top-p.offsetHeight-4);
+        p.style.left=left+'px';
+        p.style.top=top+'px';
+        const bs=document.getElementById('det-pop-busca');
+        if(bs)bs.focus();
+        setTimeout(()=>document.addEventListener('mousedown',detFora,true),0);
+        document.addEventListener('keydown',detEsc,true);
+      };
+      window.detBusca=function(q){
+        const li=document.getElementById('det-pop-list');
+        if(!li)return;
+        const s=String(q||'').toLowerCase();
+        li.querySelectorAll('label').forEach(l=>{l.style.display=(l.getAttribute('data-v')||'').toLowerCase().indexOf(s)>=0?'flex':'none'});
+      };
+      window.detTog=function(vi,chk){
+        const i=window.__detPopCol;
+        if(i==null)return;
+        const v=window.__detPopOpts[vi];
+        const f=(window.__detF[i]||[]).slice();
+        const k=f.indexOf(v);
+        if(chk){if(k<0)f.push(v)}else if(k>=0)f.splice(k,1);
+        window.__detF[i]=f;
+        window.__detRender();
+      };
+      window.detTodos=function(on){
+        const i=window.__detPopCol;
+        if(i==null)return;
+        window.__detF[i]=on?window.__detPopOpts.slice():[];
+        const li=document.getElementById('det-pop-list');
+        if(li)li.querySelectorAll('input[type=checkbox]').forEach(c=>{c.checked=!!on});
+        window.__detRender();
+      };
+      window.detLimparCol=function(i){
+        window.__detF[i]=COLS[i].tp==='t'?[]:'';
+        window.detFechar();
+        window.__detRender();
+      };
+      window.detFiltro=function(i,v){
+        window.__detF[i]=String(v==null?'':v).trim();
+        window.__detFoco=i;
+        window.__detRender();
+      };
+      window.detLimpar=function(){
+        window.__detF=vazio();
+        window.__detFoco=null;
+        window.detFechar();
+        window.__detRender();
+      };
       window.__detRender=function(){
         const box=document.getElementById('r6det-box');
         if(!box)return;
         const ls=itensDesp.filter(l=>passa(l,-1));
-        const ativo=window.__detF.some(v=>v);
-        box.innerHTML=`<div class="no-print" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:11px;color:var(--text2)">Mostrando <b style="color:var(--purple)">${ls.length}</b> de ${itensDesp.length} lançamento(s)</span>${ativo?`<button onclick="detLimpar()" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--purple);font-weight:600;cursor:pointer">✕ Limpar filtros</button>`:''}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead>${cab()}</thead><tbody>${ls.length?ls.map(linha).join(''):`<tr><td colspan="15" style="padding:18px;text-align:center;color:var(--text2)">Nenhum lançamento com esses filtros.</td></tr>`}</tbody><tfoot>${rodape(ls)}</tfoot></table></div>`;
+        const temF=COLS.some((c,i)=>ativo(i));
+        box.innerHTML=`<div class="no-print" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px"><span style="font-size:11px;color:var(--text2)">Mostrando <b style="color:var(--purple)">${ls.length}</b> de ${itensDesp.length} lançamento(s)</span>${chips()}${temF?`<button type="button" onclick="detLimpar()" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--purple);font-weight:600;cursor:pointer">✕ Limpar filtros</button>`:''}</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead>${cab()}</thead><tbody>${ls.length?ls.map(linha).join(''):`<tr><td colspan="15" style="padding:18px;text-align:center;color:var(--text2)">Nenhum lançamento com esses filtros.</td></tr>`}</tbody><tfoot>${rodape(ls)}</tfoot></table></div>`;
         if(window.__detFoco!=null){
-          const al=box.querySelector('[data-detcol="'+window.__detFoco+'"]');
-          if(al){al.focus();if(al.tagName==='INPUT'){const vv=al.value;al.value='';al.value=vv}}
+          const al=box.querySelector('input[data-detcol="'+window.__detFoco+'"]');
+          if(al){al.focus();const vv=al.value;al.value='';al.value=vv}
           window.__detFoco=null;
         }
       };
-      window.detFiltro=function(i,v){window.__detF[i]=String(v==null?'':v).trim();window.__detFoco=i;window.__detRender()};
-      window.detLimpar=function(){window.__detF=COLS.map(()=>'');window.__detFoco=null;window.__detRender()};
       setTimeout(()=>{try{window.__detRender()}catch(e){}},0);
       return `<div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--purple)">🔍 Detalhamento por produto</div><details ${itensDesp.length<=12?'open':''}><summary style="cursor:pointer;user-select:none;font-size:11px;color:var(--purple);font-weight:600;margin-bottom:10px">${itensDesp.length} lançamento(s) em ${nLotes} lote(s) · mostrar / ocultar</summary><div id="r6det-box"></div></details></div>`;
     })();
