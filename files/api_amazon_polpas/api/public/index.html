@@ -278,7 +278,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div class="sb2" id="ok0">Ordem registrada com sucesso!</div>
       <div class="fg"><label class="fl">Fornecedor</label><select class="fi" id="cf"></select></div>
       <div class="fr"><div class="fg"><label class="fl">Qtd. latas (14 kg)</label><input class="fi" type="number" id="cl" placeholder="ex: 120" oninput="calcC()"></div><div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" id="cp" placeholder="ex: 28.50" oninput="calcC()"></div></div>
-      <div class="fr"><div class="fg"><label class="fl">Data de entrega</label><input class="fi" type="date" id="cd"></div><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="cc" list="regioes-lista" placeholder="ex: Cametá" autocomplete="off"><datalist id="regioes-lista"></datalist></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Data de entrega</label><input class="fi" type="date" id="cd"></div><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="cc" list="regioes-lista" placeholder="ex: Cametá" autocomplete="off" onblur="arrumaRegiao(this)"><datalist id="regioes-lista"></datalist></div></div>
       <div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="cfrete-tipo"><option value="terceiro">Terceiro</option><option value="proprio">Carro Próprio</option><option value="fornecedor">Carro Fornecedor</option><option value="outros">Outros</option></select></div><div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" id="cfrete-valor" placeholder="ex: 150.00" oninput="calcC()"></div></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="cfrete-saldo"> Frete entra no saldo do fornecedor</label></div>
       <div class="fr"><div class="fg"><label class="fl">Unidade fabril</label><select class="fi" id="cunidade" onchange="toggleUnidadeOutros('cunidade','cunidade-outros')"><option value="amazon_polpas">Amazon Polpas</option><option value="amazon_filial">Amazon Filial</option><option value="granfruto">Granfruto</option><option value="cameta">Cametá</option><option value="cametaense">Cametaense</option><option value="outros">Outros</option></select></div><div class="fg" id="cunidade-outros-wrap" style="display:none"><label class="fl">Descrever unidade</label><input class="fi" type="text" id="cunidade-outros" placeholder="Descrever..."></div></div>
       <div class="rb"><div><div class="rb-lbl">Total estimado</div><div class="rb-val" id="ctotal">R$ —</div></div><button class="btn btn-p" id="bc0" onclick="regCompra()">Registrar ordem</button></div>
@@ -648,6 +648,17 @@ function go(n){
   LOADERS[n]()
 }
 
+const REGIAO_MINUSC=new Set(['e','do','da','dos','das','de','o','a','em']);
+function chaveReg(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^0-9A-Za-z]+/g,' ').trim().toUpperCase()}
+function arrumaRegiao(el){
+  if(!el)return;
+  const bruto=String(el.value||'').replace(/\s+/g,' ').trim();
+  if(!bruto){el.value='';return}
+  const k=chaveReg(bruto);
+  const dl=document.getElementById('regioes-lista');
+  const ja=dl?[...dl.options].map(o=>o.value).find(x=>chaveReg(x)===k):null;
+  el.value=ja||bruto.toLowerCase().split(' ').map((p,i)=>(i>0&&REGIAO_MINUSC.has(p))?p:p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+}
 async function carregaRegioes(){
   try{
     const r=await req('GET','/compras/regioes')
@@ -1401,7 +1412,7 @@ function renderCamposEdicao9(){
     const un=c.unidade_fabril,outros=!!un&&(un==='outros'||!UNIDADES[un])
     h=`<div class="fr"><div class="fg"><label class="fl">Qtd. latas prevista</label><input class="fi" type="number" id="ed-latas" value="${num9(c.qtd_latas_prevista)}"></div>
     <div class="fg"><label class="fl">Preço por lata (R$)</label><input class="fi" type="number" step="0.01" id="ed-preco" value="${num9(c.preco_por_lata)}"></div></div>
-    <div class="fr"><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="ed-regiao" list="regioes-lista" autocomplete="off" value="${esc9(c.regiao)}"></div>
+    <div class="fr"><div class="fg"><label class="fl">Região</label><input class="fi" type="text" id="ed-regiao" list="regioes-lista" autocomplete="off" onblur="arrumaRegiao(this)" value="${esc9(c.regiao)}"></div>
     <div class="fg"><label class="fl">Placa combinada</label><input class="fi" type="text" id="ed-placa-compra" value="${esc9(c.placa)}"></div></div>
     <div class="fr"><div class="fg"><label class="fl">Tipo de frete</label><select class="fi" id="ed-tipo-frete">${['terceiro|Terceiro','proprio|Carro Próprio','fornecedor|Carro Fornecedor','outros|Outros'].map(o=>{const[v,t]=o.split('|');return `<option value="${v}" ${c.tipo_frete===v?'selected':''}>${t}</option>`}).join('')}</select></div>
     <div class="fg"><label class="fl">Valor do frete (R$)</label><input class="fi" type="number" step="0.01" id="ed-valor-frete" value="${num9(c.valor_frete)}"></div></div>
