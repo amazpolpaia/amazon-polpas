@@ -3,6 +3,62 @@ const pool = require('../db/pool')
 const { autenticar, autorizar } = require('../middleware/auth')
 const { respostaComValores } = require('../utils/valores')
 
+// --- Regiao: grafia unica ---------------------------------------------------
+// Nao aceitamos mais caixa alta. Antes de gravar, a regiao e comparada com as
+// que ja existem ignorando acento e maiuscula; se achar, grava com a grafia que
+// ja esta no banco (CAMETA -> Cameta'). Se for regiao nova, vira Caixa Alta So
+// Nas Iniciais (MOURA E BAQUIA -> Moura e Baquia).
+const MINUSCULAS = new Set(['e', 'de', 'do', 'da', 'dos', 'das', 'o', 'a', 'em'])
+
+const chaveRegiao = (s) => String(s == null ? '' : s)
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[^0-9A-Za-z]+/g, ' ')
+  .trim().toUpperCase()
+
+const tituloRegiao = (s) => String(s == null ? '' : s)
+  .replace(/\s+/g, ' ').trim().toLowerCase()
+  .split(' ')
+  .map((p, i) => (i > 0 && MINUSCULAS.has(p)) ? p : p.charAt(0).toUpperCase() + p.slice(1))
+  .join(' ')
+
+// Entre duas grafias da mesma regiao, prefere a que nao esta em caixa alta,
+// depois a que tem acento, depois a mais usada.
+const notaGrafia = (regiao, n) => {
+  const texto = String(regiao || '')
+  const caixaAlta = (texto === texto.toUpperCase() && /[A-Za-z]/.test(texto)) ? 1 : 0
+  const acento = /[^\x00-\x7F]/.test(texto) ? 1 : 0
+  return Number(n || 0) + acento * 1000 - caixaAlta * 1000000
+}
+
+async function grafiasRegiao () {
+  const { rows } = await pool.query(
+    `SELECT TRIM(regiao) AS regiao, COUNT(*)::int AS n
+       FROM compras
+      WHERE regiao IS NOT NULL AND TRIM(regiao) <> ''
+      GROUP BY 1`
+  )
+  return rows
+}
+
+async function canonizaRegiao (entrada) {
+  const bruto = String(entrada == null ? '' : entrada).replace(/\s+/g, ' ').trim()
+  if (!bruto) return null
+  const k = chaveRegiao(bruto)
+  if (!k) return null
+  try {
+    let melhor = null
+    for (const r of await grafiasRegiao()) {
+      if (chaveRegiao(r.regiao) !== k) continue
+      const nota = notaGrafia(r.regiao, r.n)
+      if (!melhor || nota > melhor.nota) melhor = { regiao: r.regiao, nota }
+    }
+    if (melhor) return melhor.regiao
+  } catch (e) {
+    // se a consulta falhar, ao menos arruma a caixa alta
+  }
+  return tituloRegiao(bruto)
+}
+
 // GET /compras?data=2025-05-20
 router.get('/', autenticar, async (req, res) => {
   const { data, fornecedor_id } = req.query
@@ -37,6 +93,7 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
     return res.status(400).json({ erro: 'lote_id, fornecedor_id, qtd_latas_prevista e preco_por_lata são obrigatórios.' })
 
   try {
+    const regiaoOk = await canonizaRegiao(regiao)
     const { rows } = await pool.query(
       `INSERT INTO compras
         (lote_id, fornecedor_id, data_negociacao, data_entrega_prev,
@@ -48,7 +105,7 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
         lote_id, fornecedor_id,
         data_negociacao || new Date().toISOString().split('T')[0],
         data_entrega_prev, qtd_latas_prevista, preco_por_lata,
-        regiao ? String(regiao).trim() : null, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id,
+        regiaoOk, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', observacoes, req.usuario.id,
         placa ? String(placa).toUpperCase().trim() : null, !!frete_no_saldo
       ]
     )
@@ -63,12 +120,16 @@ router.post('/', autenticar, autorizar('gerente', 'comprador'), async (req, res)
 // GET /compras/regioes - lista as regioes ja usadas, para o autocompletar
 router.get('/regioes', autenticar, async (_req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT DISTINCT TRIM(regiao) AS regiao FROM compras
-       WHERE regiao IS NOT NULL AND TRIM(regiao) <> ''
-       ORDER BY 1`
-    )
-    res.json(rows.map((r) => r.regiao))
+    // Uma entrada por regiao: se houver duas grafias, mostra a melhor.
+    const melhor = new Map()
+    for (const r of await grafiasRegiao()) {
+      const k = chaveRegiao(r.regiao)
+      if (!k) continue
+      const nota = notaGrafia(r.regiao, r.n)
+      const atual = melhor.get(k)
+      if (!atual || nota > atual.nota) melhor.set(k, { regiao: r.regiao, nota })
+    }
+    res.json([...melhor.values()].map((x) => x.regiao).sort((a, b) => a.localeCompare(b, 'pt-BR')))
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao listar regioes.' })
   }
@@ -120,7 +181,7 @@ router.put('/:lote_id', autenticar, autorizar('gerente'), async (req, res) => {
               frete_no_saldo=COALESCE($9, frete_no_saldo),
               total_ajustado = CASE WHEN qtd_latas_prevista IS DISTINCT FROM $1::int OR ROUND(preco_por_lata,2) IS DISTINCT FROM ROUND($2::numeric,2) THEN NULL ELSE total_ajustado END
        WHERE lote_id=$7 RETURNING *`,
-      [qtd_latas_prevista, preco_por_lata, regiao ? String(regiao).trim() : null, tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
+      [qtd_latas_prevista, preco_por_lata, await canonizaRegiao(regiao), tipo_frete, valor_frete || 0, unidade_fabril || 'amazon_polpas', req.params.lote_id,
        manter(placa),
        frete_no_saldo === undefined ? null : !!frete_no_saldo,
        manter(observacoes), manter(data_entrega_prev)]
