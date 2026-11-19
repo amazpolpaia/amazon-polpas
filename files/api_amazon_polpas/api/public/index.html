@@ -61,7 +61,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .btn-logout:hover{background:rgba(255,255,255,.13);color:#fff}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;height:50px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px}
-.topbar-breadcrumb{font-size:10.5px;color:var(--text3)}
+.topbar-breadcrumb{font-size:12.5px;color:var(--text2);font-weight:500}
 .topbar-title{font-size:14px;font-weight:650;color:var(--text)}
 .topbar-right{display:flex;align-items:center;gap:9px}
 .topbar-date{font-size:11.5px;color:var(--text3)}
@@ -266,7 +266,6 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
     <div class="topbar">
       <div>
         <div class="topbar-breadcrumb">Amazon Polpas · Operação diária</div>
-        <div class="topbar-title" id="ttitle">Compra de fruto</div>
       </div>
       <div class="topbar-right">
         <span class="topbar-date" id="tdate"></span>
@@ -277,7 +276,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S0 -->
 <div class="screen active" id="s0">
-  <div class="section-header"><div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div><div style="display:flex;align-items:center;gap:8px"><div id="s0-mgr-btns" style="display:none;flex-direction:column;align-items:flex-end;gap:4px"><div style="display:flex;gap:6px"><button class="btn btn-w" onclick="editarEtapa('s0')" style="padding:6px 12px;font-size:12px">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4);font-size:12px;padding:6px 12px" onclick="abrirCancelLote('s0')">✕ Cancelar lote</button></div><div id="s0-sel-info" style="font-size:11px;color:rgba(255,255,255,.6)">← Clique num fornecedor para selecionar</div></div><span class="badge bw" id="s0date"></span></div></div>
+  <div class="section-header"><div><div class="sh-title">Compra de fruto</div><div class="sh-sub">Registre a negociação antes do recebimento</div></div><div style="display:flex;align-items:center;gap:8px"><div id="s0-mgr-btns" style="display:none;flex-direction:column;align-items:flex-end;gap:4px"><div style="display:flex;gap:6px"><button class="btn btn-w" onclick="editarEtapa('s0')" style="padding:6px 12px;font-size:12px">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33;font-size:12px;padding:6px 12px" onclick="abrirCancelLote('s0')">✕ Cancelar lote</button></div><div id="s0-sel-info" style="font-size:11px;color:var(--text3)">← Clique num fornecedor para selecionar</div></div><span class="badge bw" id="s0date"></span></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Nova ordem de compra</div><div class="card-sub">Registrar lote negociado com fornecedor</div>
@@ -295,7 +294,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S1 -->
 <div class="screen" id="s1">
-  <div class="section-header sh-green"><div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div><div id="s1-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s1')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s1')">✕ Cancelar lote</button></div></div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — chegada</div><div class="sh-sub">Pesagem do caminhão carregado</div></div><div id="s1-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s1')">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33" onclick="abrirCancelLote('s1')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de chegada</div><div class="card-sub">Pesagem e horário de entrada</div>
@@ -313,7 +312,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S2 -->
 <div class="screen" id="s2">
-  <div class="section-header"><div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div><div id="s2-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s2')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s2')">✕ Cancelar lote</button></div></div>
+  <div class="section-header"><div><div class="sh-title">Recepção de fruto</div><div class="sh-sub">Contagem de latas descarregadas</div></div><div id="s2-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s2')">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33" onclick="abrirCancelLote('s2')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Contagem de latas</div><div class="card-sub">Confira e confirme vários lotes de uma vez · clique na linha para selecioná-la</div>
@@ -329,7 +328,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S3 -->
 <div class="screen" id="s3">
-  <div class="section-header sh-green"><div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div><div id="s3-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s3')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s3')">✕ Cancelar lote</button></div></div>
+  <div class="section-header sh-green"><div><div class="sh-title">Balança — saída</div><div class="sh-sub">Pesagem após descarga · cálculo automático do peso líquido</div></div><div id="s3-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s3')">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33" onclick="abrirCancelLote('s3')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Pesagem pós-descarga</div><div class="card-sub">Cálculo do peso líquido</div>
@@ -346,7 +345,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S4 -->
 <div class="screen" id="s4">
-  <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div><div id="s4-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s4')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s4')">✕ Cancelar lote</button></div></div>
+  <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div><div id="s4-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s4')">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33" onclick="abrirCancelLote('s4')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Registro de produção</div><div class="card-sub">Um produto · vários fornecedores · as latas são rateadas automaticamente</div>
@@ -367,7 +366,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S5 -->
 <div class="screen" id="s5">
-  <div class="section-header"><div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div><div id="s5-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s5')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s5')">✕ Cancelar lote</button></div></div>
+  <div class="section-header"><div><div class="sh-title">Rendimento</div><div class="sh-sub">Custo por litro despolpado por fornecedor</div></div><div id="s5-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s5')">✎ Editar</button><button class="btn" style="background:var(--red-light);color:var(--red);border:1px solid #b42d2d33" onclick="abrirCancelLote('s5')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
       <div class="card-title">Calcular custo por litro</div><div class="card-sub">Consolida dados do lote automaticamente</div>
@@ -384,7 +383,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 
 <!-- S6 -->
 <div class="screen" id="s6">
-  <div class="section-header sh-duo"><div><div class="sh-title">Relatório executivo</div><div class="sh-sub">Indicadores de produção e desempenho por período</div></div>
+  <div class="section-header sh-duo"><div><div class="sh-title">Relatório final</div><div class="sh-sub">Indicadores de produção e desempenho por período</div></div>
     <div style="display:flex;gap:8px;align-items:center">
       <input class="fi" type="date" id="r6data" style="max-width:150px">
       <button class="btn btn-p" id="bc6" onclick="fecharDia()" style="font-size:12px">🔒 Fechar dia</button>
@@ -492,7 +491,7 @@ hr{border:none;border-top:1px solid var(--border);margin:12px 0}
 </div>
 
 <div class="screen" id="s12">
-  <div class="section-header sh-duo"><div><div class="sh-title">Saldo de fornecedores</div><div class="sh-sub">Contas a pagar — devido menos pago</div></div><div style="display:flex;align-items:center;gap:8px"><label class="fl" style="margin:0;color:#fff">Unidade</label><select class="fi" id="f12unid" onchange="loadS12()" style="min-width:170px"><option value="">Todas</option></select></div></div>
+  <div class="section-header sh-duo"><div><div class="sh-title">Saldo de fornecedores</div><div class="sh-sub">Contas a pagar — devido menos pago</div></div><div style="display:flex;align-items:center;gap:8px"><label class="fl" style="margin:0">Unidade</label><select class="fi" id="f12unid" onchange="loadS12()" style="min-width:170px"><option value="">Todas</option></select></div></div>
   <div class="card" style="margin-bottom:16px;border-left:4px solid var(--purple)">
     <div class="card-title">Registrar pagamento</div>
     <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap">
@@ -650,7 +649,7 @@ function go(n){
   if(nav&&nav.classList.contains('locked')){alert('Sem acesso a este módulo.');return}
   document.querySelectorAll('.screen').forEach((s,i)=>s.classList.toggle('active',i===n))
   document.querySelectorAll('.sb-item').forEach((b,i)=>b.classList.toggle('active',i===n))
-  document.getElementById('ttitle').textContent=TITLES[n]
+  {const _tt=document.getElementById('ttitle');if(_tt)_tt.textContent=TITLES[n]}
   document.querySelector('.content').scrollTop=0
   LOADERS[n]()
 }
