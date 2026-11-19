@@ -343,13 +343,17 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
   <div class="section-header"><div><div class="sh-title">Despolpamento</div><div class="sh-sub">Extração de polpa e medição de litros por lata</div></div><div id="s4-mgr-btns" style="display:none;gap:8px"><button class="btn btn-w" onclick="editarEtapa('s4')">✎ Editar</button><button class="btn" style="background:rgba(239,83,80,.2);color:#fff;border:1px solid rgba(239,83,80,.4)" onclick="abrirCancelLote('s4')">✕ Cancelar lote</button></div></div>
   <div class="g2">
     <div class="card cg">
-      <div class="card-title">Registro de despolpamento</div><div class="card-sub">Um lançamento por produto · quilos produzidos</div>
-      <div class="sb2" id="ok4">Despolpamento registrado!</div>
-      <div class="fg"><label class="fl">Lote</label><select class="fi" id="d4lote" onchange="selLote4()"></select></div><div id="d4saldo" style="display:none;background:var(--bg3);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-size:12px"></div><div class="fg"><label class="fl">Produto</label><input class="fi" type="text" id="d4produto" list="produtos-lista" placeholder="ex: Açaí Grosso" autocomplete="off"><datalist id="produtos-lista"></datalist></div>
-      <div class="fr"><div class="fg"><label class="fl">Latas consumidas</label><input class="fi" type="number" id="d4latas" oninput="calcD4()"></div><div class="fg"><label class="fl">Quilos produzidos</label><input class="fi" type="number" id="d4litros" placeholder="ex: 944" oninput="calcD4()"></div></div>
-      <div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="d4op" placeholder="Nome do operador"></div><div class="fr"><div class="fg"><label class="fl">Sólidos Totais</label><input class="fi" type="text" id="d4solidos" placeholder="ex: 12.5%"></div><div class="fg"><label class="fl">Marca</label><input class="fi" type="text" id="d4marca" placeholder="ex: Amazon Polpas"></div></div><div class="fg"><label class="fl">Lote do produto (polpa)</label><input class="fi" type="text" id="d4lote-produto" placeholder="ex: LP-20260725-001"></div>
-      <div class="sr sr-g"><span class="fw7 tg">Rendimento calculado</span><span class="mn fw7 tg" style="font-size:17px" id="d4rend">—</span></div>
-      <button class="btn btn-p" style="width:100%;margin-top:14px" id="bc4" onclick="regDesp()">Registrar despolpamento</button>
+      <div class="card-title">Registro de produção</div><div class="card-sub">Um produto · vários fornecedores · as latas são rateadas automaticamente</div>
+      <div class="sb2" id="ok4">Produção registrada!</div>
+      <select id="d4lote" style="display:none" onchange="selLote4()"></select>
+      <div class="fg"><label class="fl">Produto</label><input class="fi" type="text" id="d4produto" list="produtos-lista" placeholder="ex: Delícia do Pará" autocomplete="off"><datalist id="produtos-lista"></datalist></div>
+      <div class="fr"><div class="fg"><label class="fl">Quilos produzidos</label><input class="fi" type="number" id="d4litros" placeholder="ex: 57000" oninput="despCalc()"></div><div class="fg"><label class="fl">Sólidos Totais</label><input class="fi" type="text" id="d4solidos" placeholder="ex: 12%"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Marca</label><input class="fi" type="text" id="d4marca" placeholder="ex: Amazon Polpas"></div><div class="fg"><label class="fl">Lote do produto (polpa)</label><input class="fi" type="text" id="d4lote-produto" placeholder="ex: LP-20261119-001"></div></div>
+      <div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="d4op" placeholder="Nome do operador"></div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 9px;padding-top:14px;border-top:1px solid var(--border)">De quais lotes saíram as latas</div>
+      <div id="desp-barra"></div>
+      <div id="desp-lista"><div class="ls">Carregando...</div></div>
+      <div id="desp-rodape"></div>
     </div>
     <div class="card cp"><div class="card-title">Últimos processados</div><div class="card-sub">Lotes despolpados recentemente</div><div id="lista4"><div class="ls">Nenhum registro.</div></div></div>
   </div>
@@ -775,21 +779,137 @@ async function loadS3(){try{const _l3=await req('GET','/lotes?status=em_descarga
 async function regSaida(){const btn=document.getElementById('bc3'),lid=document.getElementById('b3lote').value,ps=document.getElementById('b3saida').value;if(!lid||!ps){alert('Selecione o lote e informe o peso de saída.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/pesagens/saida',{lote_id:lid,peso_saida_kg:parseFloat(ps)});ok('ok3');loadS3()}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
 
 // S4
-async function selLote4(){const lid=document.getElementById('d4lote').value;const c=document.getElementById('d4latas'),box=document.getElementById('d4saldo');
-  if(!lid){c.value='';box.style.display='none';calcD4();return}
+function despEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+// Rateia o total de quilos pelas latas de cada lote. Trabalha em centesimos para
+// a soma fechar exatamente com o total digitado (sobra vai para os maiores restos).
+function despRatear(totalKg,pesos){
+  const T=Math.round(Number(totalKg||0)*100);
+  const S=pesos.reduce((a,b)=>a+Number(b||0),0);
+  if(!(T>0)||!(S>0))return pesos.map(()=>0);
+  const exato=pesos.map(p=>T*Number(p||0)/S);
+  const base=exato.map(x=>Math.floor(x));
+  const resto=T-base.reduce((a,b)=>a+b,0);
+  const ordem=exato.map((x,i)=>({f:x-Math.floor(x),i})).sort((a,b)=>b.f-a.f);
+  for(let k=0;k<resto;k++)base[ordem[k%ordem.length].i]++;
+  return base.map(c=>c/100);
+}
+function despSel(){return (window.DESP||[]).filter(r=>r.marcado&&Number(r.latas)>0)}
+function despTotais(){
+  const sel=despSel();
+  const latas=sel.reduce((s,r)=>s+Number(r.latas||0),0);
+  const kg=Number((document.getElementById('d4litros')||{}).value||0);
+  return {sel,latas,kg,rend:(latas>0&&kg>0)?kg/latas:0,forn:new Set(sel.map(r=>r.fornecedor)).size};
+}
+function despKgLinha(){
+  const L=window.DESP||[];const sel=despSel();
+  const t=despTotais();
+  const vals=despRatear(t.kg,sel.map(r=>Number(r.latas||0)));
+  const mapa={};sel.forEach((r,k)=>{mapa[r.lote_id]=vals[k]});
+  L.forEach((r,i)=>{
+    const el=document.getElementById('desp-kg-'+i);
+    if(el)el.textContent=(mapa[r.lote_id]!=null&&t.kg>0)?(mapa[r.lote_id].toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg'):'—';
+  });
+  return mapa;
+}
+function despSet(i,campo,valor){
+  const r=(window.DESP||[])[i];if(!r)return;
+  if(campo==='marcado'){r.marcado=!!valor;if(r.marcado&&!(Number(r.latas)>0))r.latas=String(r.saldo||'');if(!r.marcado)r.latas='';despRender();return}
+  r[campo]=valor;
+  const av=document.getElementById('desp-av-'+i);
+  if(av)av.innerHTML=(Number(r.latas)>Number(r.saldo))?'<span style="color:var(--red,#e53935);font-weight:700">passa do saldo de '+Number(r.saldo).toLocaleString('pt-BR')+' latas</span>':'';
+  despCalc();
+}
+function despUsarSaldo(i){const r=(window.DESP||[])[i];if(!r)return;r.marcado=true;r.latas=String(r.saldo||'');despRender()}
+function despMarcarTodos(on){(window.DESP||[]).forEach(r=>{r.marcado=!!on;r.latas=on?String(r.saldo||''):''});despRender()}
+function selLote4(){const s=document.getElementById('d4lote');if(!s)return;const lid=s.value;const ls=document.querySelectorAll('#desp-lista .desp-linha');for(let i=0;i<ls.length;i++){ls[i].style.borderLeftColor=(ls[i].getAttribute('data-id')===lid)?'var(--purple)':'transparent'}}
+function despSelLinha(id){const s=document.getElementById('d4lote');if(s)s.value=id;selLote4()}
+function despCalc(){despKgLinha();despRodape()}
+function despBarra(){
+  const el=document.getElementById('desp-barra');if(!el)return;
+  if(!(window.DESP||[]).length){el.innerHTML='';return}
+  const bs='padding:5px 11px;font-size:11px';
+  el.innerHTML='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn btn-w" style="'+bs+'" onclick="despMarcarTodos(1)">Marcar todos</button><button class="btn btn-w" style="'+bs+'" onclick="despMarcarTodos(0)">Desmarcar</button><span style="font-size:11px;color:var(--text3)">marcar um lote já preenche com o saldo inteiro</span></div>';
+}
+function despRodape(){
+  const el=document.getElementById('desp-rodape');if(!el)return;
+  const L=window.DESP||[];if(!L.length){el.innerHTML='';return}
+  const t=despTotais();
+  const pode=t.sel.length>0&&t.kg>0;
+  const rot=t.sel.length?('Registrar produção em '+t.sel.length+' lote'+(t.sel.length===1?'':'s')):'Registrar produção';
+  el.innerHTML='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">'
+   +'<div class="sr sr-g" style="margin-bottom:10px"><span class="fw7 tg">'+t.latas.toLocaleString('pt-BR')+' latas · '+t.forn+' fornecedor'+(t.forn===1?'':'es')+'</span><span class="mn fw7 tg" style="font-size:17px">'+(t.rend?t.rend.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg/lata':'—')+'</span></div>'
+   +(t.sel.length&&!t.kg?'<div style="font-size:11px;color:var(--yellow);font-weight:600;margin-bottom:8px">Informe os quilos produzidos para ratear entre os lotes.</div>':'')
+   +'<button class="btn btn-p" id="bc4" onclick="confirmarProducao()"'+(pode?'':' disabled')+' style="width:100%'+(pode?'':';opacity:.5;cursor:not-allowed')+'">'+rot+'</button></div>';
+}
+function despRender(){
+  despBarra();
+  const el=document.getElementById('desp-lista');if(!el)return;
+  const L=window.DESP||[];
+  if(!L.length){el.innerHTML='<div class="ls">Nenhum lote com saldo de latas.</div>';despRodape();return}
+  const lb='font-size:9px;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:2px';
+  el.innerHTML=L.map(function(r,i){
+    return '<div class="desp-linha" data-i="'+i+'" data-id="'+despEsc(r.lote_id)+'" onclick="despSelLinha(this.getAttribute(\'data-id\'))" style="border:1px solid var(--border);border-left:3px solid transparent;border-radius:9px;padding:10px 12px;margin-bottom:8px;cursor:pointer;opacity:'+(r.marcado?'1':'.55')+'">'
+      +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><input type="checkbox" '+(r.marcado?'checked':'')+' onclick="event.stopPropagation()" onchange="despSet('+i+',\'marcado\',this.checked)" style="width:16px;height:16px;flex:none;cursor:pointer"><div style="min-width:0"><div class="fw7" style="font-size:13px">'+despEsc(r.fornecedor)+'</div><div style="font-size:11px;color:var(--text3)">'+despEsc(r.codigo)+' · saldo <b>'+Number(r.saldo).toLocaleString('pt-BR')+'</b> de '+Number(r.recebidas).toLocaleString('pt-BR')+' latas</div></div></div>'
+      +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end">'
+      +'<div><div style="'+lb+'">Latas usadas</div><input class="fi" type="number" value="'+despEsc(r.latas)+'" placeholder="0" onclick="event.stopPropagation()" oninput="despSet('+i+',\'latas\',this.value)" style="width:100px;padding:6px 8px;font-size:13px"></div>'
+      +'<div><button class="btn btn-w" style="padding:6px 10px;font-size:11px" onclick="event.stopPropagation();despUsarSaldo('+i+')">usar todo o saldo</button></div>'
+      +'<div style="flex:1;min-width:110px;text-align:right"><div style="'+lb+'">Quilos rateados</div><div class="mn fw7" id="desp-kg-'+i+'" style="font-size:14px;color:var(--purple);padding:4px 0">—</div></div>'
+      +'</div><div id="desp-av-'+i+'" style="font-size:11px;margin-top:6px"></div></div>';
+  }).join('');
+  selLote4();
+  despCalc();
+}
+async function confirmarProducao(){
+  const produto=(document.getElementById('d4produto')||{}).value||'';
+  const t=despTotais();
+  if(!produto.trim()){alert('Informe o produto.');return}
+  if(!(t.kg>0)){alert('Informe os quilos produzidos.');return}
+  if(!t.sel.length){alert('Marque pelo menos um lote e informe as latas usadas.');return}
+  const excede=t.sel.filter(r=>Number(r.latas)>Number(r.saldo));
+  if(excede.length){alert('Latas acima do saldo em: '+excede.map(r=>r.fornecedor+' ('+Number(r.latas)+' de '+Number(r.saldo)+')').join(', '));return}
+  const kgs=despRatear(t.kg,t.sel.map(r=>Number(r.latas)));
+  const resumo=t.sel.map((r,k)=>'• '+r.fornecedor+': '+Number(r.latas).toLocaleString('pt-BR')+' latas → '+kgs[k].toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg').join('\n');
+  if(!confirm(produto.trim()+' · '+t.kg.toLocaleString('pt-BR')+' kg · '+t.latas.toLocaleString('pt-BR')+' latas ('+t.rend.toFixed(2)+' kg/lata)\n\n'+resumo+'\n\nRegistrar?'))return;
+  const btn=document.getElementById('bc4'),rot=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.style.opacity='.6'}
+  const base={operador_nome:(document.getElementById('d4op')||{}).value||null,
+    solidos_totais:(document.getElementById('d4solidos')||{}).value||null,
+    marca:(document.getElementById('d4marca')||{}).value||null,
+    lote_produto:(document.getElementById('d4lote-produto')||{}).value||null,
+    produto:produto.trim()};
+  const erL=[];let okN=0;
+  for(let k=0;k<t.sel.length;k++){
+    const r=t.sel[k];
+    if(btn)btn.textContent='Registrando '+(k+1)+' de '+t.sel.length+'...';
+    try{
+      await req('POST','/producao/despolpamento',Object.assign({lote_id:r.lote_id,latas_processadas:parseInt(r.latas),litros_extraidos:kgs[k]},base));
+      okN++;
+    }catch(e){erL.push('• '+r.fornecedor+': '+e.message)}
+  }
+  if(btn){btn.disabled=false;btn.style.opacity='';btn.textContent=rot}
+  if(erL.length)alert(okN+' lote(s) registrado(s), '+erL.length+' com erro:\n\n'+erL.join('\n'));
+  else{ok('ok4');const p=document.getElementById('d4litros');if(p)p.value='';const q=document.getElementById('d4produto');if(q)q.value=''}
+  await loadS4();
+}
+async function loadS4(){
   try{
-    const r=await req('GET','/producao/itens/'+lid)
-    c.value=r.saldo>0?r.saldo:''
-    const dl=document.getElementById('produtos-lista')
-    if(dl&&!dl.children.length&&LOTES_S4)dl.innerHTML=''
-    const linhas=(r.itens||[]).map(x=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-top:1px solid var(--border)"><span>${x.produto||x.marca||'(sem produto)'}</span><span style="color:var(--text2)">${fmtBRLg(x.latas_processadas,0)} latas · ${fmtBRLg(x.litros_extraidos,1)} kg</span></div>`).join('')
-    box.innerHTML=`<div style="display:flex;justify-content:space-between;font-weight:700"><span>Saldo do lote</span><span style="color:${r.saldo>0?'var(--green)':'var(--text2)'}">${fmtBRLg(r.saldo,0)} de ${fmtBRLg(r.recebidas,0)} latas</span></div>${linhas?'<div style="margin-top:6px">'+linhas+'</div>':'<div style="color:var(--text3);margin-top:4px">Nenhum produto lançado ainda.</div>'}`
-    box.style.display=''
-  }catch(e){box.style.display='none';const l=(LOTES_S4||[]).find(x=>(x.lote_id||x.id)===lid);c.value=l&&l.qtd_latas_recebidas?l.qtd_latas_recebidas:''}
-  calcD4()}
-function calcD4(){const l=parseFloat(document.getElementById('d4latas').value)||0,lt=parseFloat(document.getElementById('d4litros').value)||0;document.getElementById('d4rend').textContent=(l&&lt)?(lt/l).toFixed(1)+' L/lata':'—'}
-async function loadS4(){try{const _l4=await req('GET','/lotes?status=descarregado');LOTES_S4=_l4;const s4=document.getElementById('d4lote');s4.innerHTML=_l4.length?_l4.map(l=>`<option value="${l.lote_id||l.id}">${rotuloLote(l)}</option>`).join(''):'<option value="">Nenhum lote disponível</option>'}catch(e){document.getElementById('d4lote').innerHTML='<option value="">Erro ao carregar</option>'}selLote4();try{const d=await req('GET','/producao/historico?limite=5'),el=document.getElementById('lista4');const pend=(LOTES_S4||[]).map(l=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${l.fornecedor} — ${l.codigo}</div><div class="tm" style="font-size:12px">${l.qtd_latas_recebidas||'—'} latas recebidas</div></div><div style="text-align:right"><span class="badge bgr">Pendente</span></div></div>`).join('');const cab=pend?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 6px">A despolpar</div>'+pend+'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Últimos processados</div>':'';el.innerHTML=cab+(d.length?d.map(r=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor} — ${new Date(r.data_operacao).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div><div class="tm" style="font-size:12px">${r.latas_processadas} latas</div></div><div style="text-align:right"><div class="mn fw7 ${Number(r.rendimento_l_lata)>=8?'tg':'ty'}">${Number(r.rendimento_l_lata).toFixed(1)} L/lata</div><div class="tm" style="font-size:11px">${Number(r.litros_extraidos).toLocaleString('pt-BR')} L</div></div></div>`).join(''):'<div class="ls">Sem histórico.</div>')}catch(e){document.getElementById('lista4').innerHTML='<div class="ls">'+e.message+'</div>'}}
-async function regDesp(){const btn=document.getElementById('bc4'),lid=document.getElementById('d4lote').value,latas=document.getElementById('d4latas').value,litros=document.getElementById('d4litros').value;if(!lid||!latas||!litros){alert('Preencha todos os campos.');return}btn.classList.add('loading');btn.disabled=true;try{await req('POST','/producao/despolpamento',{lote_id:lid,latas_processadas:parseInt(latas),litros_extraidos:parseFloat(litros),operador_nome:document.getElementById('d4op').value,solidos_totais:document.getElementById('d4solidos').value||null,marca:document.getElementById('d4marca').value||null,lote_produto:document.getElementById('d4lote-produto').value||null,produto:document.getElementById('d4produto').value||null});ok('ok4');const _l=document.getElementById('d4lote').value;document.getElementById('d4litros').value='';document.getElementById('d4produto').value='';await loadS4();const s=document.getElementById('d4lote');if([...s.options].some(o=>o.value===_l)){s.value=_l;selLote4()}}catch(e){alert('Erro: '+e.message)}finally{btn.classList.remove('loading');btn.disabled=false}}
+    const _l4=await req('GET','/lotes?status=descarregado');
+    LOTES_S4=_l4||[];
+    window.DESP=LOTES_S4.map(function(l){
+      const rec=Number(l.qtd_latas_recebidas||0),usa=Number(l.latas_processadas||0);
+      return {lote_id:l.lote_id||l.id,codigo:l.codigo,fornecedor:l.fornecedor,recebidas:rec,usadas:usa,saldo:Math.max(0,rec-usa),marcado:false,latas:''};
+    }).filter(r=>r.saldo>0);
+    const s4=document.getElementById('d4lote');
+    if(s4)s4.innerHTML=LOTES_S4.map(l=>'<option value="'+despEsc(l.lote_id||l.id)+'">'+despEsc(rotuloLote(l))+'</option>').join('');
+    despRender();
+  }catch(e){
+    window.DESP=[];
+    const el=document.getElementById('desp-lista');
+    if(el)el.innerHTML='<div class="ls">Erro ao carregar: '+e.message+'</div>';
+    despRodape();
+  }
+  try{const d=await req('GET','/producao/historico?limite=5'),el=document.getElementById('lista4');const pend=(window.DESP||[]).map(l=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${l.fornecedor} — ${l.codigo}</div><div class="tm" style="font-size:12px">${l.saldo} latas disponíveis</div></div><div style="text-align:right"><span class="badge bgr">Pendente</span></div></div>`).join('');const cab=pend?'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 6px">A despolpar</div>'+pend+'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Últimos processados</div>':'';el.innerHTML=cab+(d.length?d.map(r=>`<div class="sr"><div><div class="fw7" style="margin-bottom:4px">${r.fornecedor} — ${new Date(r.data_operacao).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</div><div class="tm" style="font-size:12px">${r.latas_processadas} latas</div></div><div style="text-align:right"><div class="mn fw7 ${Number(r.rendimento_l_lata)>=8?'tg':'ty'}">${Number(r.rendimento_l_lata).toFixed(1)} L/lata</div><div class="tm" style="font-size:11px">${Number(r.litros_extraidos).toLocaleString('pt-BR')} L</div></div></div>`).join(''):'<div class="ls">Sem histórico.</div>')}catch(e){document.getElementById('lista4').innerHTML='<div class="ls">'+e.message+'</div>'}
+}
 
 // S5
 async function carregaDadosR5(){const lid=document.getElementById('r5lote').value,l=getLote(lid),el=document.getElementById('r5dados');if(!l){el.innerHTML='';return}
