@@ -350,7 +350,7 @@ hr{border:none;border-top:1px solid var(--border);margin:14px 0}
       <div class="fr"><div class="fg"><label class="fl">Quilos produzidos</label><input class="fi" type="number" id="d4litros" placeholder="ex: 57000" oninput="despCalc()"></div><div class="fg"><label class="fl">Sólidos Totais</label><input class="fi" type="text" id="d4solidos" placeholder="ex: 12%"></div></div>
       <div class="fr"><div class="fg"><label class="fl">Marca</label><input class="fi" type="text" id="d4marca" placeholder="ex: Amazon Polpas"></div><div class="fg"><label class="fl">Lote do produto (polpa)</label><input class="fi" type="text" id="d4lote-produto" placeholder="ex: LP-20261119-001"></div></div>
       <div class="fg"><label class="fl">Operador</label><input class="fi" type="text" id="d4op" placeholder="Nome do operador"></div>
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:16px 0 9px;padding-top:14px;border-top:1px solid var(--border)">De quais lotes saíram as latas</div>
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--border)">De quais lotes saíram as latas</div>
       <div id="desp-barra"></div>
       <div id="desp-lista"><div class="ls">Carregando...</div></div>
       <div id="desp-rodape"></div>
@@ -846,15 +846,15 @@ function despRender(){
   const el=document.getElementById('desp-lista');if(!el)return;
   const L=window.DESP||[];
   if(!L.length){el.innerHTML='<div class="ls">Nenhum lote com saldo de latas.</div>';despRodape();return}
-  const lb='font-size:9px;text-transform:uppercase;color:var(--text3);font-weight:600;margin-bottom:2px';
   el.innerHTML=L.map(function(r,i){
-    return '<div class="desp-linha" data-i="'+i+'" data-id="'+despEsc(r.lote_id)+'" onclick="despSelLinha(this.getAttribute(\'data-id\'))" style="border:1px solid var(--border);border-left:3px solid transparent;border-radius:9px;padding:10px 12px;margin-bottom:8px;cursor:pointer;opacity:'+(r.marcado?'1':'.55')+'">'
-      +'<div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><input type="checkbox" '+(r.marcado?'checked':'')+' onclick="event.stopPropagation()" onchange="despSet('+i+',\'marcado\',this.checked)" style="width:16px;height:16px;flex:none;cursor:pointer"><div style="min-width:0"><div class="fw7" style="font-size:13px">'+despEsc(r.fornecedor)+'</div><div style="font-size:11px;color:var(--text3)">'+despEsc(r.codigo)+' · saldo <b>'+Number(r.saldo).toLocaleString('pt-BR')+'</b> de '+Number(r.recebidas).toLocaleString('pt-BR')+' latas</div></div></div>'
-      +'<div style="display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end">'
-      +'<div><div style="'+lb+'">Latas usadas</div><input class="fi" type="number" value="'+despEsc(r.latas)+'" placeholder="0" onclick="event.stopPropagation()" oninput="despSet('+i+',\'latas\',this.value)" style="width:100px;padding:6px 8px;font-size:13px"></div>'
-      +'<div><button class="btn btn-w" style="padding:6px 10px;font-size:11px" onclick="event.stopPropagation();despUsarSaldo('+i+')">usar todo o saldo</button></div>'
-      +'<div style="flex:1;min-width:110px;text-align:right"><div style="'+lb+'">Quilos rateados</div><div class="mn fw7" id="desp-kg-'+i+'" style="font-size:14px;color:var(--purple);padding:4px 0">—</div></div>'
-      +'</div><div id="desp-av-'+i+'" style="font-size:11px;margin-top:6px"></div></div>';
+    return '<div class="desp-linha" data-i="'+i+'" data-id="'+despEsc(r.lote_id)+'" onclick="despSelLinha(this.getAttribute(\'data-id\'))" style="border:1px solid var(--border);border-left:3px solid transparent;border-radius:7px;padding:6px 9px;margin-bottom:5px;cursor:pointer;background:'+(r.marcado?'var(--bg3)':'transparent')+';opacity:'+(r.marcado?'1':'.6')+'">'
+      +'<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">'
+      +'<input type="checkbox" '+(r.marcado?'checked':'')+' onclick="event.stopPropagation()" onchange="despSet('+i+',\'marcado\',this.checked)" style="width:15px;height:15px;flex:none;cursor:pointer">'
+      +'<div style="flex:1;min-width:140px;line-height:1.3"><span class="fw7" style="font-size:12.5px">'+despEsc(r.fornecedor)+'</span><br><span style="font-size:10px;color:var(--text3)">'+despEsc(r.codigo)+' · saldo <b>'+Number(r.saldo).toLocaleString('pt-BR')+'</b>/'+Number(r.recebidas).toLocaleString('pt-BR')+' latas</span></div>'
+      +'<input class="fi" type="number" value="'+despEsc(r.latas)+'" placeholder="latas" title="Latas usadas deste lote" onclick="event.stopPropagation()" oninput="despSet('+i+',\'latas\',this.value)" style="width:78px;padding:4px 7px;font-size:12.5px;flex:none">'
+      +'<span onclick="event.stopPropagation();despUsarSaldo('+i+')" title="Usar todo o saldo do lote" style="font-size:10px;color:var(--purple);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--purple);flex:none">tudo</span>'
+      +'<div class="mn fw7" id="desp-kg-'+i+'" style="font-size:12.5px;color:var(--purple);min-width:96px;text-align:right;flex:none">—</div>'
+      +'</div><div id="desp-av-'+i+'" style="font-size:10px;margin-top:2px;padding-left:24px"></div></div>';
   }).join('');
   selLote4();
   despCalc();
